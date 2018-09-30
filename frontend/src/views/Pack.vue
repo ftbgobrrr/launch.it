@@ -20,7 +20,7 @@
                             { text: 'Name', value: 'name' },
                             { text: 'Size', value: 'size' }, 
                             { text: 'Type', value: 'type' },
-                            { text: 'Action', value: 'name', align: 'right', sortable: false }
+                            { text: 'Action', value: 'name', sortable: false }
                         ]"
                         :items="libraries"
                         hide-actions
@@ -32,9 +32,9 @@
                                 <td>{{ props.item.name }}</td>
                                 <td>{{ size(props.item.size) }}</td>
                                 <td>{{ props.item.type }}</td>
-                                <td class="text-xs-right">
-                                    <v-icon small @click.stop="deleteItem(props.item, 'library')" v-if="props.item.type !== 'MOJANG'">delete</v-icon>
-                                    <v-icon small @click.stop="toggleEnable(props.item, 'library')">{{ props.item.desabled ? 'cloud_off' : 'cloud' }}</v-icon>
+                                <td>
+                                    <span flat @click.stop="deleteItem(props.item, 'library')" v-if="props.item.type !== 'MOJANG'">DELETE</span>
+                                    <span flat @click.stop="toggleEnable(props.item, 'library')">{{ props.item.desabled ? 'ENABLE' : 'DISABLE' }}</span>
                                 </td>
                             </tr>
                         </template>
@@ -207,7 +207,8 @@ export default {
     },
     methods: {
         ...mapActions({
-            updatePack: 'packs/updatePack'
+            updatePack: 'packs/updatePack',
+            upload: 'packs/upload',
         }),
         size(s) {
             return filesize(s).human();
@@ -250,14 +251,18 @@ export default {
                     return;
                 }
 
-                if (!file || file == '') {
-                    this.$notify({ group: 'main', title: 'Error', type: 'error', text: 'File not set'})
-                    return;
-                }
-
-                const n = `${pkg}:${name}:${version}`
-                console.log(pkg, n, version, file)
-
+                //if (!file || file == '') {
+                //    this.$notify({ group: 'main', title: 'Error', type: 'error', text: 'File not set'})
+                //    return;
+                //}
+                console.log(file)
+                this.upload({
+                    id: this.pack.id,
+                    type: 'library',
+                    name,
+                    file,
+                    version,
+                })
             }
         }
     },

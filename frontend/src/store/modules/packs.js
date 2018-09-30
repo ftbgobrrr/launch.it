@@ -81,15 +81,19 @@ const actions = {
             return user;
         })
     },
-    upload({}, { id, type, name, url, file, format }) {
+    upload({ }, { id, type, pkg, name, version, file }) {
         const data = new FormData();
-        data.append('pack', id)
+        data.append('pack', id);
         data.append('type', type);
-        data.append('name', name);
-        data.append('format', format);
-        if (format == 'URL')
-            data.append('url', url);
-        else data.append('file', file);
+        data.append('name', `${pkg}:${name}:${version}`);
+        data.append('file', file);
+
+        return vuex.dispatch('api/send', {
+            path: 'packs/pack/upload',
+            method: 'POST',
+            type: 'multipart/form-data',
+            data,
+        }).then(console.log)
     }
 };
 

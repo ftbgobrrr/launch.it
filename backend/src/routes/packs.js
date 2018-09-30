@@ -74,6 +74,7 @@ router.post('/pack', async (req, res) => {
 })
 
 router.post('/pack/upload', async (req, res, next) => {
+    console.log(req.body)
     const { pack, type, name } = req.body;
 
     try {

@@ -15,7 +15,7 @@
       fileSelected(e) {
         if (this.selectedCallback) {
           if (e.target.files[0]) {
-            this.selectedCallback(e.target.files[0]);
+            this.selectedCallback(e.target.files);
           } else {
             this.selectedCallback(null);
           }

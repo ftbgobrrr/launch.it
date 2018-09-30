@@ -23,7 +23,7 @@ const actions = {
         }
     ) {
         let body = method == 'POST' && JSON.stringify(data) || undefined
-        if (method == 'POST' && type == 'application/x-www-form-urlencoded')
+        if (method == 'POST' && (type == 'application/x-www-form-urlencoded' || type == 'multipart/form-data'))
             body = data;
         return fetch(
                     `http://localhost:3000/${path}`,
