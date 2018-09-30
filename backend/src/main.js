@@ -16,12 +16,13 @@ const mojang = new Mojang();
 const {
     PORT = 3000,
     HOST = `localhost`,
-    AUTH_SECRET = 'ducon'
+    AUTH_SECRET = 'ducon',
+    MONGO_URI = 'mongodb://localhost/launcher',
 } = process.env
 
 app.use(logger('dev'));
 
-app.use(mongo('mongodb://localhost/launcher'))
+app.use(mongo(MONGO_URI))
 upash.install('argon2', require('@phc/argon2'))
 app.use(cors({
     origin: true,
