@@ -81,19 +81,24 @@ const actions = {
             return user;
         })
     },
-    upload({ }, { id, type, pkg, name, version, file }) {
+    upload({ }, { id, type, pkg, name, version, file, folder }) {
         const data = new FormData();
         data.append('pack', id);
         data.append('type', type);
-        data.append('name', `${pkg}:${name}:${version}`);
+        data.append('name', type === 'library' ? `${pkg}:${name}:${version}` : `${folder}:${name}`);
         data.append('file', file);
 
         return vuex.dispatch('api/send', {
             path: 'packs/pack/upload',
             method: 'POST',
-            type: 'multipart/form-data',
+            type: 'application/x-www-form-urlencoded',
+            head: {
+                credentials: 'include',
+            },
             data,
-        }).then(console.log)
+        }).then(() => {
+
+        })
     }
 };
 

@@ -15,7 +15,7 @@
       fileSelected(e) {
         if (this.selectedCallback) {
           if (e.target.files[0]) {
-            this.selectedCallback(e.target.files);
+            this.selectedCallback(e.target.files[0]);
           } else {
             this.selectedCallback(null);
           }
@@ -30,6 +30,7 @@
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    margin-top: 15px;
   }
   .jbtn-file input[type=file] {
     position: absolute;

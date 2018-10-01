@@ -5,6 +5,7 @@
             v-model="drawer"
             enable-resize-watcher
             fixed
+            clipped
             app
         >
         <v-list>
@@ -22,8 +23,9 @@
             </v-list-tile>
         </v-list>
         </v-navigation-drawer>
-        <v-toolbar app>
+        <v-toolbar app clipped-left>
             <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
+            <v-toolbar-title>Panel</v-toolbar-title>
             <v-spacer></v-spacer>
             <v-menu :nudge-width="50">
                 <v-toolbar-title slot="activator">
@@ -93,7 +95,7 @@ export default {
                 pass: null,
                 confirm: null
             },
-            drawer: false
+            drawer: true
         }
     },
     computed: {
