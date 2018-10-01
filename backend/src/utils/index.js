@@ -1,33 +1,33 @@
 export const ADMIN = {
     group: 'ADMIN',
-    level: 100
-}
+    level: 100,
+};
 
 export const EDITOR = {
     group: 'EDITOR',
-    level: 50
-}
+    level: 50,
+};
 
 export const VIEWER = {
     group: 'VIEWER',
-    level: 0
-}
+    level: 0,
+};
 
-export const groups = [ADMIN, EDITOR, VIEWER]
+export const groups = [ADMIN, EDITOR, VIEWER];
 
 export function groupToLevel({ group }) {
-   return groups.find(({ group: g }) => g == group).level;
+    return groups.find(({ group: g }) => g == group).level;
 }
 
 export function levelToGroup(level) {
     return groups.find(({ level: l }) => l == level).group;
 }
 
-export const VERSIONS_URL = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+export const VERSIONS_URL = 'https://launchermeta.mojang.com/mc/game/version_manifest.json';
 
 export const path = (n) => {
     const pkg = n.split(':')[0];
     const name = n.split(':')[1];
     const version = n.split(':')[2];
-    return `${pkg.replace(/\./g, '/')}/${name}/${version}/${name}-${version}.jar`
-}
+    return `${pkg.replace(/\./g, '/')}/${name}/${version}/${name}-${version}.jar`;
+};

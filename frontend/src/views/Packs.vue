@@ -128,7 +128,6 @@ export default {
                 pack: { ...item },
                 title: 'Edit pack'
             }
-           
         },
         open({ id }) {
             this.$router.push({ name: 'Pack', params: { id }})

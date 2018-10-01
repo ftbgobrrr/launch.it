@@ -1,19 +1,19 @@
-import express from 'express'
-import jwt from 'jwt-express'
-import upash from 'upash'
-import { ObjectId } from 'mongodb'
-import { groups } from '../utils'
-import { groupToLevel, ADMIN } from '../utils'
+import express from 'express';
+import jwt from 'jwt-express';
+import upash from 'upash';
+import { ObjectId } from 'mongodb';
+import { groups } from '../utils';
+import { groupToLevel, ADMIN } from '../utils';
 
 const router = express.Router();
 
-router.use(jwt.active())
+router.use(jwt.active());
 
 router.get('/', async (req, res) => {
     const users = await req.db
         .collection('users')
         .find({})
-        .map(({ _id, pass,...fields }) => ({ id: _id, ...fields }))
+        .map(({ _id, pass, ...fields }) => ({ id: _id, ...fields }))
         .toArray();
     res.status(200);
     res.json(users);
@@ -30,8 +30,8 @@ router.post('/addUser', jwt.require('level', '>=', groupToLevel(ADMIN)), async (
     req.db.collection('users')
         .insertOne({ login, pass: hash, group })
         .then(({ insertedId }) => {
-            res.status(200).json({ id: insertedId, login, group })
-        })
+            res.status(200).json({ id: insertedId, login, group });
+        });
 });
 
 router.post('/delUser', jwt.require('level', '>=', groupToLevel(ADMIN)), async (req, res) => {
@@ -39,8 +39,8 @@ router.post('/delUser', jwt.require('level', '>=', groupToLevel(ADMIN)), async (
     req.db.collection('users')
         .deleteOne({ _id: new ObjectId(id) })
         .then(({ deletedCount }) => {
-            res.status(200).json(deletedCount > 0 ? { id } : {})
-        })
+            res.status(200).json(deletedCount > 0 ? { id } : {});
+        });
 });
 
 router.post('/editUser', jwt.require('level', '>=', groupToLevel(ADMIN)), async (req, res) => {
@@ -49,11 +49,11 @@ router.post('/editUser', jwt.require('level', '>=', groupToLevel(ADMIN)), async 
     req.db.collection('users')
         .updateOne(
             { _id: new ObjectId(id) },
-            { $set: user }
+            { $set: user },
         )
         .then(({ modifiedCount }) => {
-            res.status(200).json(modifiedCount > 0 ? { id } : {})
-        })
+            res.status(200).json(modifiedCount > 0 ? { id } : {});
+        });
 });
 
-module.exports = router
+module.exports = router;

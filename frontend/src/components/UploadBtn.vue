@@ -30,6 +30,7 @@
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    margin-top: 15px;
   }
   .jbtn-file input[type=file] {
     position: absolute;

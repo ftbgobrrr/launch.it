@@ -1,39 +1,38 @@
 const routes = [
     {
         path: '/',
-        route: require('./home')
+        route: require('./home'),
     },
     {
         path: '/users',
-        route: require('./users')
+        route: require('./users'),
     },
     {
         path: '/packs',
-        route: require('./packs')
+        route: require('./packs'),
     },
     {
         path: '/presets',
-        route: require('./presets')
+        route: require('./presets'),
     },
     {
         path: '/auth',
-        route: require('./auth')
-    }
+        route: require('./auth'),
+    },
 ];
 
 const loadRoutes = (app, routes) => {
     routes.forEach(({ path, sub, route }) => {
-        if (sub)
-            loadRoutes(route, sub)
-        app.use(path, route)
-    })
-}
+        if (sub) loadRoutes(route, sub);
+        app.use(path, route);
+    });
+};
 
 const addRoutes = (app) => {
-    loadRoutes(app, routes)
-}
+    loadRoutes(app, routes);
+};
 
 export {
     addRoutes,
-    routes
-}
+    routes,
+};
