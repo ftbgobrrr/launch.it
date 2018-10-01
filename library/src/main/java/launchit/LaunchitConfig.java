@@ -1,6 +1,4 @@
-package launchit.downloader;
-
-import launchit.Launchit;
+package launchit;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -10,7 +8,18 @@ public class LaunchitConfig
 {
     private URL manifestUrl;
     private URL assetsServer;
+    private URL authServer;
     private File installFolder;
+
+    public LaunchitConfig() {
+        try {
+            authServer = new URL("https://authserver.mojang.com/");
+            assetsServer = new URL("http://resources.download.minecraft.net/");
+            manifestUrl = new URL("https://launchermeta.mojang.com/mc/game/version_manifest.json");
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+    }
 
     public LaunchitConfig setManifestUrl(String manifestUrl) throws MalformedURLException {
         this.manifestUrl = new URL(manifestUrl);
@@ -22,6 +31,11 @@ public class LaunchitConfig
         return this;
     }
 
+    public LaunchitConfig setAuthServer(String server) throws MalformedURLException {
+        this.authServer = new URL(server);
+        return this;
+    }
+
     public LaunchitConfig setInstallFolder(File folder) {
         this.installFolder = folder;
         return this;
@@ -29,6 +43,10 @@ public class LaunchitConfig
 
     public URL getAssetsServer() {
         return assetsServer;
+    }
+
+    public URL getAuthServer() {
+        return authServer;
     }
 
     public URL getManifestUrl() {

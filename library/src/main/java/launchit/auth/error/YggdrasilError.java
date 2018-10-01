@@ -1,4 +1,4 @@
-package launchit.auth.model;
+package launchit.auth.error;
 
 import com.google.gson.annotations.Expose;
 

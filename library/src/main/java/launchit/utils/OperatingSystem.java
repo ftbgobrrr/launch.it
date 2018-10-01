@@ -34,7 +34,7 @@ public enum OperatingSystem {
     }
 
     public static int getArchMinRam() {
-        boolean args = "32".equals(getArch());
+        boolean args = getArch().equals("32");
         return args ? 512 : 1024;
     }
 

@@ -7,7 +7,7 @@ import launchit.formatter.libraries.Artifact;
 
 import java.util.List;
 
-public interface EventListener extends IFileDownload {
+public interface DownloaderEventListener extends IFileDownload {
 
     default void downloadFileStart(Downloadable file) {}
     default void downloadFileEnd(DownloadError error, Downloadable file) {}

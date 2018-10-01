@@ -1,6 +1,6 @@
 package launchit.auth.model;
 
-public class YggdrasilRefreshReq {
+public class RefreshReq {
     private String accessToken;
     private String clientToken;
 

@@ -1,12 +1,12 @@
 package launchit.auth.model;
 
-public class YggdrasilAuthenticateReq {
-    private YggdrasilAgent agent;
+public class AuthenticateReq {
+    private Agent agent;
     private String username;
     private String password;
     private String clientToken;
 
-    public void setAgent(YggdrasilAgent agent) {
+    public void setAgent(Agent agent) {
         this.agent = agent;
     }
 

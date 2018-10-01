@@ -1,15 +1,15 @@
 import launchit.Launchit;
-import launchit.downloader.LaunchitConfig;
+import launchit.LaunchitConfig;
 import launchit.downloader.Downloadable;
 import launchit.downloader.errors.DownloadError;
 import launchit.formatter.versions.Version;
-import launchit.downloader.interfaces.EventListener;
-import launchit.utils.FileUtils;
+import launchit.downloader.interfaces.DownloaderEventListener;
+import launchit.utils.FilesUtils;
 
 import java.io.IOException;
 import java.util.List;
 
-public class Main implements EventListener
+public class Main implements DownloaderEventListener
 {
     Launchit d;
     Version v;
@@ -20,7 +20,7 @@ public class Main implements EventListener
             d = new LaunchitConfig()
                     .setManifestUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json")
                     .setAssetsServer("http://resources.download.minecraft.net/")
-                    .setInstallFolder(FileUtils.getInstallDir(".test-launcher"))
+                    .setInstallFolder(FilesUtils.getInstallDir(".test-launcher"))
                     .create();
             d.setFileListener(this);
             v = d.getLocalVersion("1.13.1");

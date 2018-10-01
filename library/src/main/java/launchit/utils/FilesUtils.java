@@ -6,7 +6,7 @@ import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class FileUtils {
+public class FilesUtils {
 
     public static boolean verifyChecksum(File file, String testChecksum)
     {
@@ -41,7 +41,7 @@ public class FileUtils {
             MessageDigest sha1 = MessageDigest.getInstance("SHA1");
             InputStream fis = url.openStream();
 
-            byte[] data = new byte[1024];
+            byte[] data = new byte[65536];
             int read;
             while ((read = fis.read(data)) != -1) {
                 sha1.update(data, 0, read);

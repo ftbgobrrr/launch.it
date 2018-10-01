@@ -2,9 +2,9 @@ package launchit;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import launchit.auth.SessionManager;
 import launchit.downloader.DownloadProgress;
 import launchit.downloader.Downloadable;
-import launchit.downloader.LaunchitConfig;
 import launchit.downloader.errors.DownloadError;
 import launchit.formatter.FileData;
 import launchit.formatter.FileType;
@@ -19,25 +19,34 @@ import launchit.formatter.libraries.Library;
 import launchit.formatter.versions.Version;
 import launchit.formatter.versions.VersionType;
 import launchit.downloader.interfaces.IFileDownload;
-import launchit.utils.FileUtils;
+import launchit.utils.FilesUtils;
 import launchit.utils.UrlUtils;
 import org.apache.commons.io.Charsets;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Launchit
 {
     private final LaunchitConfig config;
+    private final SessionManager sessionManager;
+    private ExecutorService executorService;
+
     private IFileDownload iFileDownload;
 
     protected Launchit(LaunchitConfig config) {
         this.config = config;
+        this.executorService = Executors.newFixedThreadPool(10);
+        this.sessionManager = new SessionManager(this, true);
     }
 
 
@@ -51,7 +60,7 @@ public class Launchit
         return new GsonBuilder()
             .registerTypeAdapterFactory(new LowerCaseEnumAdapter())
             .create()
-            .fromJson(IOUtils.toString(this.getConfig().getManifestUrl(), Charsets.UTF_8), Manifest.class);
+            .fromJson(IOUtils.toString(this.getConfig().getManifestUrl(), StandardCharsets.UTF_8), Manifest.class);
     }
 
     public Version getRemoteLatestVersion(Manifest manifest, VersionType type) throws IOException {
@@ -72,7 +81,7 @@ public class Launchit
      * @throws IOException if the versions cannot be found
      */
     public Version getRemoteVersion(Manifest.ManVersion manVersion) throws IOException {
-        return getVersion(IOUtils.toString(new URL(manVersion.getUrl()), Charsets.UTF_8));
+        return getVersion(IOUtils.toString(new URL(manVersion.getUrl()), StandardCharsets.UTF_8));
     }
 
     /**
@@ -87,7 +96,7 @@ public class Launchit
         return getVersion(
                 org.apache.commons.io.FileUtils.readFileToString(
                     Version.getLocalVersionFile(this, id),
-                    Charsets.UTF_8
+                    StandardCharsets.UTF_8
                 )
         );
     }
@@ -117,12 +126,12 @@ public class Launchit
                         return;
                     try {
                         File localVersion = Version.getLocalVersionFile(this, v.getId());
-                        String versionJson = IOUtils.toString(new URL(mV.getUrl()), Charsets.UTF_8);
-                        org.apache.commons.io.FileUtils.writeStringToFile(localVersion, versionJson);
+                        String versionJson = IOUtils.toString(new URL(mV.getUrl()), StandardCharsets.UTF_8);
+                        FileUtils.writeStringToFile(localVersion, versionJson, StandardCharsets.UTF_8);
                         v = getVersion(versionJson);
                         File localAssetIndex = AssetIndex.getLocalAssetsIndex(this, v.getAssetIndex());
-                        String assetsJson = IOUtils.toString(new URL(v.getAssetIndex().getUrl()), Charsets.UTF_8);
-                        org.apache.commons.io.FileUtils.writeStringToFile(localAssetIndex, assetsJson);
+                        String assetsJson = IOUtils.toString(new URL(v.getAssetIndex().getUrl()), StandardCharsets.UTF_8);
+                        FileUtils.writeStringToFile(localAssetIndex, assetsJson, StandardCharsets.UTF_8);
                         assetMap = v.getAssetsMap(assetsJson);
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -142,28 +151,28 @@ public class Launchit
                     .filter(Library::matchEnvironement)
                     .forEach(library -> {
                         Artifact artifact = library.getEnvironmentLibrary();
-                        this.iFileDownload.checkFileStart(artifact, current[0], toCheck);
+                        this.getFileListener().checkFileStart(artifact, current[0], toCheck);
                         File localFile = library.getLocalFile(this);
-                        if (!localFile.exists() || !FileUtils.verifyChecksum(localFile, library.getRemoteSha1()))
+                        if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, library.getRemoteSha1()))
                         {
-                            this.iFileDownload.checkFileEnd(artifact, current[0]++, toCheck);
+                            this.getFileListener().checkFileEnd(artifact, current[0]++, toCheck);
                             filesToDownload.add(new Downloadable(FileType.LIBRARY, artifact, localFile));
                             if (localFile.exists())
-                                org.apache.commons.io.FileUtils.deleteQuietly(localFile);
+                                FileUtils.deleteQuietly(localFile);
                         }
 
                     });
                 assetMap
                     .forEach((key, asset) -> {
                         Artifact artifact = Asset.toArtifact(asset, this);
-                        this.iFileDownload.checkFileStart(artifact, current[0], toCheck);
+                        this.getFileListener().checkFileStart(artifact, current[0], toCheck);
                         File localFile = asset.getLocalFile(this);
-                        if (!localFile.exists() || !FileUtils.verifyChecksum(localFile, asset.getHash()))
+                        if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, asset.getHash()))
                         {
-                            this.iFileDownload.checkFileEnd(artifact, current[0]++, toCheck);
+                            this.getFileListener().checkFileEnd(artifact, current[0]++, toCheck);
                             filesToDownload.add(new Downloadable(FileType.ASSET, artifact, localFile));
                             if (localFile.exists())
-                                org.apache.commons.io.FileUtils.deleteQuietly(localFile);
+                                FileUtils.deleteQuietly(localFile);
                         }
                     });
                 File localClient = Version.DownloadType.CLIENT.getLocalFile(this, v);
@@ -175,15 +184,15 @@ public class Launchit
                         clientFileData.getSha1()
                 );
 
-                this.iFileDownload.checkFileStart(clientArtifact, current[0], toCheck);
-                if (!localClient.exists() || !FileUtils.verifyChecksum(localClient, clientFileData.getSha1())) {
+                this.getFileListener().checkFileStart(clientArtifact, current[0], toCheck);
+                if (!localClient.exists() || !FilesUtils.verifyChecksum(localClient, clientFileData.getSha1())) {
                     filesToDownload.add(new Downloadable(FileType.CLIENT, clientArtifact, localClient));
                     if (localClient.exists())
-                        org.apache.commons.io.FileUtils.deleteQuietly(localClient);
-                    this.iFileDownload.checkFileEnd(clientArtifact, current[0]++, toCheck);
+                        FileUtils.deleteQuietly(localClient);
+                    this.getFileListener().checkFileEnd(clientArtifact, current[0]++, toCheck);
                 }
 
-                this.iFileDownload.checkFinished(filesToDownload);
+                this.getFileListener().checkFinished(filesToDownload);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -210,8 +219,16 @@ public class Launchit
         this.iFileDownload = iFileDownload;
     }
 
+    public SessionManager getSessionManager() {
+        return sessionManager;
+    }
+
     public IFileDownload getFileListener() {
         return iFileDownload;
+    }
+
+    public ExecutorService getExecutorService() {
+        return executorService;
     }
 
     public LaunchitConfig getConfig() {
