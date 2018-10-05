@@ -9,14 +9,32 @@ public class Arguments {
     private List<Argument> jvm;
 
     public List<String> getGameArguments() {
-        return game.stream()
+        return getArguments(game);
+    }
+
+    public List<ArgRule> getGameArgRules() {
+        return getArgRules(game);
+    }
+
+    public List<String> getJvmArguments() {
+        return getArguments(jvm);
+    }
+
+    public List<ArgRule> getJvmArgRules() {
+        return getArgRules(jvm);
+    }
+
+    private List<String> getArguments(List<Argument> args)
+    {
+        return args.stream()
                 .filter(a -> a.getParam() != null)
                 .map(Argument::getParam)
                 .collect(Collectors.toList());
     }
 
-    public List<ArgRule> getGameArgRules() {
-        return game.stream()
+    private List<ArgRule> getArgRules(List<Argument> args)
+    {
+        return args.stream()
                 .filter(a -> a.getRule() != null)
                 .map(Argument::getRule)
                 .collect(Collectors.toList());

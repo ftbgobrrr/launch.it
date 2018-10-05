@@ -7,7 +7,9 @@ public class Profile {
     private @Expose String id;
     private @Expose String name;
 
-    private String accessToken;
+    private @Expose String accessToken;
+
+    private @Expose Settings settings;
 
     public String getId() {
         return id;
@@ -23,5 +25,9 @@ public class Profile {
 
     public void setAccessToken(String accessToken) {
         this.accessToken = accessToken;
+    }
+
+    public Settings getSettings() {
+        return settings == null ? settings = new Settings() : settings;
     }
 }

@@ -2,8 +2,7 @@ import express from 'express';
 import jwt from 'jwt-express';
 import upash from 'upash';
 import { ObjectId } from 'mongodb';
-import { groups } from '../utils';
-import { groupToLevel, ADMIN } from '../utils';
+import { groups, groupToLevel, ADMIN } from '../utils';
 
 const router = express.Router();
 

@@ -26,13 +26,13 @@ public class Asset {
     }
 
     public File getLocalFile(Launchit d) {
-        return new File(AssetIndex.getLocalObjectsFolder(d), Asset.toArtifact(this, d).getPath());
+        return new File(AssetIndex.getLocalObjectsFolder(d), getHash().substring(0, 2) + "/" + getHash());
     }
 
     public static Artifact toArtifact(Asset a, Launchit d)
     {
         return new Artifact(
-                String.format("%s/%s", a.getHash().substring(0, 2), a.getHash()),
+                a.getHash().substring(0, 2) + "/" + a.getHash(),
                 a.getSize(),
                 a.getUrl(d),
                 a.getHash()

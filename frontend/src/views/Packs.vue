@@ -51,12 +51,17 @@
                 class="elevation-1"
             >
                 <template slot="items" slot-scope="props">
-                    <td @click="open(props.item)">{{ props.item.name }}</td>
-                    <td @click="open(props.item)">{{ props.item.preset }}</td>
-                    <td class="text-xs-right">
-                        <v-icon small class="mr-2" @click="editItem(props.item)">edit</v-icon>
-                        <v-icon small @click="deleteItem(props.item)">delete</v-icon>
-                    </td>
+                    <tr @click="open(props.item)">
+                        <td>{{ props.item.name }}</td>
+                        <td>{{ props.item.preset }}</td>
+                        <td>
+                            <v-icon v-if="props.item.default">check_circle</v-icon>
+                        </td>
+                        <td class="text-xs-right">
+                            <v-icon small class="mr-2" @click.stop="editItem(props.item)">edit</v-icon>
+                            <v-icon small @click.stop="deleteItem(props.item)">delete</v-icon>
+                        </td>
+                    </tr>
                 </template>
             </v-data-table>
         </v-container>
@@ -64,6 +69,24 @@
             <v-toolbar flat>
                 <v-toolbar-title>Default Pack</v-toolbar-title>
             </v-toolbar>
+            <v-card>
+                <v-card-text>
+                    <v-layout row wra>
+                        <v-flex xs9 class="pa-2">
+                            <v-select
+                                v-model="defaultPack"
+                                :items="packs"
+                                item-text="name"
+                                item-value="id"
+                                label="Standard"
+                            ></v-select>
+                        </v-flex>
+                        <v-flex xs3 class="pa-2 pt-3">
+                            <v-btn color="primary" @click="setDefault()" block>SUBMIT</v-btn>
+                        </v-flex>
+                    </v-layout>
+                </v-card-text>
+            </v-card>
         </v-container>
     </div>
 </template>
@@ -77,6 +100,7 @@ export default {
     data() {
         return {
             loading: false,
+            defaultPack: null,
             dialog: {
                 value: false,
                 presetsLoading: true,
@@ -85,6 +109,7 @@ export default {
             header: [
                 { text: 'Name', value: 'name' },
                 { text: 'Preset', value: 'preset' },
+                { text: 'Default', value: 'default' },
                 { text: 'Actions', value: 'name', align: 'right', sortable: false }
             ]
         }
@@ -101,7 +126,8 @@ export default {
             updatePresets: 'presets/updatePresets',
             delPack: 'packs/delPack',
             addPack: 'packs/addPack',
-            editPack: 'packs/editPack'
+            editPack: 'packs/editPack',
+            defPack: 'packs/defaultPack'
         }),
         deleteItem({ id }) {
             if (confirm("Are you sure ?")) {
@@ -132,6 +158,9 @@ export default {
         open({ id }) {
             this.$router.push({ name: 'Pack', params: { id }})
         },
+        setDefault() {
+            this.defPack({ id: this.defaultPack })
+        },
         save() {
             if (this.dialog.type == 'ADD') {
                 const { name, preset: { id: preset = null } = {} } = this.dialog.pack;
@@ -147,7 +176,9 @@ export default {
         }
     },
     mounted() {
-        this.updatePacks()
+        this.updatePacks().then(() => {
+            this.defaultPack = this.packs.find(({ default: def }) => def)
+        })
     }
 }
 </script>

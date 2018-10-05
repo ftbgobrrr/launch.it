@@ -3,6 +3,7 @@ package launchit.auth.profile;
 import com.google.gson.annotations.Expose;
 import launchit.auth.model.Profile;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class LauncherProfiles {
@@ -12,7 +13,7 @@ public class LauncherProfiles {
     private @Expose Map<String, Profile> profiles;
 
     public Map<String, Profile> getProfiles() {
-        return profiles;
+        return profiles == null ? profiles = new HashMap<>() : profiles;
     }
 
     public String getClientToken() {

@@ -5,8 +5,11 @@ import {
     mojang, appRoot, HOST, PORT,
 } from '..';
 import fse from 'fs-extra';
+import fs from 'fs';
 import { promisify } from 'util';
 import sha1FileCallback from 'sha1-file';
+import nodepath from 'path';
+import deleteEmpty from 'delete-empty';
 import { groupToLevel, EDITOR, path as nameToPath } from '../utils';
 import { error, INVALID_RESULT, INCOMPATIBLE_VERSION } from '../errors';
 
@@ -25,26 +28,47 @@ router.get('/', async (req, res) => {
     res.json(packs);
 });
 
+router.post('/default', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res) => {
+    const { id } = req.body;
+    await req.db.collection('packs')
+        .updateMany(
+            { default: true },
+            { $set: { default: false } }  
+        );
+    await req.db.collection('packs')
+        .updateMany(
+            { _id: new ObjectId(id) },
+            { $set: { default: true } }  
+        );
+    const packs = await req.db
+        .collection('packs')
+        .find({})
+        .map(({ _id, ...fields }) => ({ id: _id, ...fields }))
+        .toArray();
+    res.status(200);
+    res.json(packs);
+});
+
 router.post('/add', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res) => {
     const { name, preset } = req.body;
     const { data: version } = await mojang.version(preset, true);
     console.log(version);
     req.db.collection('packs')
-        .insertOne({ name, preset })
+        .insertOne({ name, preset, files: [], libraries: [] })
         .then(({ insertedId }) => {
             res.status(200).json({ id: insertedId, name, preset });
         });
 });
 
-router.post('/del', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res) => {
+router.post('/del', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res, next) => {
     const { id } = req.body;
     const { deletedCount } = await req.db.collection('packs')
         .deleteOne({ _id: new ObjectId(id) });
-    if (deletedCount == 0) return next();
+    if (deletedCount === 0) return next();
     res.status(200).json({ id });
 }, ({ res }) => error(res, INVALID_RESULT));
 
-router.post('/edit', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res) => {
+router.post('/edit', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res, next) => {
     const { id, name } = req.body;
     const pack = { name };
     const { modifiedCount } = await req.db.collection('packs')
@@ -52,7 +76,7 @@ router.post('/edit', jwt.require('level', '>=', groupToLevel(EDITOR)), async (re
             { _id: new ObjectId(id) },
             { $set: pack },
         );
-    if (modifiedCount == 0) return next();
+    if (modifiedCount === 0) return next();
     res.status(200).json({ id });
 }, ({ res }) => error(res, INVALID_RESULT));
 
@@ -66,10 +90,10 @@ router.post('/pack', async (req, res) => {
     res.status(200);
     try {
         const { data } = await mojang.version(pack.preset);
-        if (pack && pack.libraries) {
-            data.libraries = [...pack.libraries, ...data.libraries];
-        }
-        res.json({ ...pack, data });
+        const clone = Object.assign({}, data);
+        if (pack && pack.libraries)
+            clone.libraries = pack.libraries.concat(data.libraries);
+        res.json({ ...pack, data: clone });
     } catch (err) {
         error(res, INCOMPATIBLE_VERSION);
     }
@@ -84,31 +108,29 @@ const plurializeTypes = (type) => {
     return undefined;
 };
 
-router.post('/pack/upload', async (req, res, next) => {
+router.post('/pack/upload', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res, next) => {
     // pack id de la ressource
-    // type = type librayr/file
+    // type = type library/file
     // name = truc formatter
     const { pack, type, name } = req.body;
     const plurializedType = plurializeTypes(type);
-    if (!plurializedType) {
-        res.end();
-        return;
-    }
+    if (!plurializedType) return next();
     try {
         const { files: { file } } = req;
-        const path = nameToPath(name);
-        const out = `${appRoot}/public/${plurializedType}/${path}`;
+        const path = nodepath.normalize(nameToPath(name, type));
+        const out = nodepath.normalize(`${appRoot}/public/${plurializedType}/${path}`);
         await fse.createFile(out);
         await file.mv(out);
-        const url = `http://${HOST}:${PORT}/public/${plurializedType}/${path}`;
+        const url = `http://${HOST}:${PORT}/public/${plurializedType}/${nodepath.normalize(path).replace(/^\/|\/$/g, '')}`;
         const { size } = await fse.stat(out);
         const sha1 = await sha1File(out);
 
         const lib = {
             name,
+            type: 'CUSTOM',
             downloads: {
                 artifact: {
-                    path,
+                    path: path.replace(/^\/|\/$/g, ''),
                     url,
                     size,
                     sha1,
@@ -116,20 +138,93 @@ router.post('/pack/upload', async (req, res, next) => {
             },
         };
 
-        const { modifiedCount } = await req.db.collection('packs')
-            .updateOne(
-                { _id: new ObjectId(pack) },
-                { $push: { [plurializedType]: lib } },
-            );
-        if (modifiedCount === 0) {
-            next();
-            return;
-        }
-        console.log('ok');
+        const bulk = req.db.collection('packs').initializeOrderedBulkOp();
+        bulk.find({ _id: new ObjectId(pack) }).updateOne({ $pull: { [plurializedType]: { name } } });
+        bulk.find({ _id: new ObjectId(pack) }).updateOne({ $push: { [plurializedType]: lib } });
+        const { isOk } = await bulk.execute();
+        if (!isOk) return next();
         res.json(lib);
     } catch (err) {
-        console.error(err);
-        next();
+        console.log(err)
+        return next();
+    }
+}, ({ res }) => error(res, INVALID_RESULT));
+
+router.post('/pack/del', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res, next) => {
+    const { id: pack, type, name } = req.body;
+    console.log(pack, type, name, req.body)
+    const plurializedType = plurializeTypes(type);
+    const { modifiedCount } = await req.db.collection('packs')
+        .updateOne(
+            { _id: new ObjectId(pack) },
+            { $pull: { [plurializedType]: { name } } }
+        );
+    if (modifiedCount === 0) return next();
+    const path = nameToPath(name, type);
+    const out = `${appRoot}/public/${plurializedType}/${path}`;
+    await fse.unlink(out);
+    res.status(200).json({ id: pack, name, type });
+}, ({ res }) => error(res, INVALID_RESULT));
+
+router.post('/pack/settings', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res, next) => {
+    const { id: pack, mainClass, args } = req.body;
+    const { modifiedCount, matchedCount } = await req.db.collection('packs')
+        .updateOne(
+            { _id: new ObjectId(pack) },
+            { $set: { mainClass, args } }
+        );
+    console.log(modifiedCount, pack, mainClass, args);
+    
+    if (matchedCount !== 1 && modifiedCount === 0) return next();
+    res.status(200).json({ id: pack, mainClass, args });
+}, ({ res }) => error(res, INVALID_RESULT));
+
+router.post('/pack/desable', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res, next) => {
+    const { id: pack, type, name, desable } = req.body;
+    console.log(pack, type, name, req.body);
+    const bulk = req.db.collection('packs').initializeOrderedBulkOp();
+    bulk.find({ _id: new ObjectId(pack) }).updateOne({ $pull: { desabled: { type, name } } });
+    if (desable == true)
+        bulk.find({ _id: new ObjectId(pack) }).updateOne({ $push: { desabled: { type, name } } });
+    const { isOk } = await bulk.execute();
+    if (!isOk) return next();
+    res.status(200).json({ id: pack, name, type, desable });
+}, ({ res }) => error(res, INVALID_RESULT));
+
+
+router.post('/pack/build', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res, next) => {
+    const { id } = req.body;
+    try {
+        const packs = await req.db
+            .collection('packs')
+            .find({})
+            .map(({ _id, ...fields }) => ({ id: _id, ...fields }))
+            .toArray();
+            res.status(200);
+        const pack = packs.find(({ id: i }) => i == id)
+        const { data } = await mojang.version(pack.preset);
+        const clone = Object.assign({}, data);
+        if (pack) {
+            clone.id = pack.name;
+            clone.libraries = pack.libraries && pack.libraries.filter(({ name }) => {
+                return pack.desabled && !pack.desabled.find(({ name: n, type }) => n == name && type == 'library')
+            }).concat(data.libraries);
+
+            clone.files = pack.files && pack.files.filter(({ name }) => {
+                return pack.desabled && !pack.desabled.find(({ name: n, type }) => n == name && type == 'file')
+            }) || undefined;
+
+            clone.mainClass = pack.mainClass || clone.mainClass;
+            if (pack.args)
+                clone.arguments.game = clone.arguments.game.concat(pack.args.split(' '));
+        }
+        const version = `${appRoot}/public/versions/${pack.name.toLowerCase()}.json`;
+        await fse.createFile(version)
+        await fse.writeJson(version, clone);
+        await deleteEmpty(`${appRoot}/public/`);
+        res.json({ id });
+    } catch (err) {
+        error(res, INCOMPATIBLE_VERSION);
     }
 }, ({ res }) => error(res, INVALID_RESULT));
 

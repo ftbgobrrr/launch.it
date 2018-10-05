@@ -5,6 +5,7 @@ import App from './App'
 import Notifications from 'vue-notification'
 import { router } from './router'
 import Vuetify from 'vuetify'
+import '@fortawesome/fontawesome-free/css/all.css'
 import 'vuetify/dist/vuetify.min.css'
 import { store } from '@/store'
 

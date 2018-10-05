@@ -2,8 +2,10 @@ import launchit.Launchit;
 import launchit.LaunchitConfig;
 import launchit.downloader.Downloadable;
 import launchit.downloader.errors.DownloadError;
+import launchit.formatter.libraries.Artifact;
 import launchit.formatter.versions.Version;
 import launchit.downloader.interfaces.DownloaderEventListener;
+import launchit.game.GameManager;
 import launchit.utils.FilesUtils;
 
 import java.io.IOException;
@@ -24,7 +26,7 @@ public class Main implements DownloaderEventListener
                     .create();
             d.setFileListener(this);
             v = d.getLocalVersion("1.13.1");
-            d.checkForUpdate(v);
+            d.checkForUpdate(v.getId());
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -37,6 +39,7 @@ public class Main implements DownloaderEventListener
         main.init();
     }
 
+
     @Override
     public void checkFinished(List<Downloadable> filesToDownload) {
         System.out.println(filesToDownload.size());
@@ -47,7 +50,7 @@ public class Main implements DownloaderEventListener
     public void downloadFinished(List<DownloadError> errors) {
         System.out.println(errors.size());
         if (errors.size() == 0) {
-            //TODO Launch game
+            d.getGameManager().start(v);
         }
     }
 }

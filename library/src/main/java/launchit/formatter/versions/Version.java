@@ -16,6 +16,7 @@ import org.apache.commons.io.IOUtils;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class Version {
@@ -25,7 +26,7 @@ public class Version {
         SERVER;
 
         public File getLocalFile(Launchit d, Version v) {
-            return new File(Version.getLocalVersionFolder(d, v.getId()), String.format("%s.jar", name().toLowerCase()));
+            return new File(Version.getLocalVersionFolder(d, v.getId()), name().toLowerCase() + ".jar");
         }
     }
 
@@ -39,6 +40,7 @@ public class Version {
 
     private Map<DownloadType, FileData> downloads;
     private List<Library> libraries;
+    private List<VersionFile> files;
 
     private int minimumLauncherVersion;
     private VersionType type;
@@ -92,6 +94,10 @@ public class Version {
         return arguments;
     }
 
+    public List<VersionFile> getFiles() {
+        return files;
+    }
+
     //******************************************************************************************************************
 
     public static File getLocalVersionsFolder(Launchit d) {
@@ -103,11 +109,11 @@ public class Version {
     }
 
     public static File getLocalVersionFile(Launchit d, String version) {
-        return new File(Version.getLocalVersionFolder(d, version), String.format("%s.json", version));
+        return new File(Version.getLocalVersionFolder(d, version), version + ".json");
     }
 
     public Map<String, Asset> getRemoteAssetsMap() throws IOException {
-        return getAssetsMap(IOUtils.toString(new URL(getAssetIndex().getUrl()), Charsets.UTF_8));
+        return getAssetsMap(IOUtils.toString(new URL(getAssetIndex().getUrl()), StandardCharsets.UTF_8));
     }
 
     public Map<String, Asset> getLocalAssetsMap(Launchit d) throws IOException {
@@ -116,19 +122,54 @@ public class Version {
         return getAssetsMap(
             FileUtils.readFileToString(
                 AssetIndex.getLocalAssetsIndex(d, getAssetIndex()),
-                Charsets.UTF_8
+                StandardCharsets.UTF_8
             )
         );
     }
 
     public Map<String, Asset> getAssetsMap(String json) {
+        if (json == null)
+            return null;
         JsonElement elem = new JsonParser().parse(json);
         return new GsonBuilder()
             .registerTypeAdapterFactory(new LowerCaseEnumAdapter())
+            .setPrettyPrinting()
             .create()
             .fromJson(
                     elem.getAsJsonObject().get("objects"),
                     new TypeToken<Map<String, Asset>>(){}.getType()
             );
+    }
+
+    public Library getLibrary(Launchit it, File file) {
+        if (!file.exists())
+            return null;
+        return getLibraries()
+                .stream()
+                .filter(lib -> file.equals(lib.getLocalFile(it)))
+                .findFirst()
+                .orElse(null);
+
+    }
+
+    public VersionFile getFile(Launchit it, File file) {
+        if (!file.exists())
+            return null;
+        return getFiles()
+                .stream()
+                .filter(f -> file.equals(f.getLocalFile(it)))
+                .findFirst()
+                .orElse(null);
+
+    }
+
+    public Asset getAsset(Launchit it, Map<String, Asset> assetMap, File file) {
+        if (assetMap == null)
+            return null;
+        return assetMap.values()
+                .stream()
+                .filter(asset -> asset.getLocalFile(it).equals(file))
+                .findFirst()
+                .orElse(null);
     }
 }

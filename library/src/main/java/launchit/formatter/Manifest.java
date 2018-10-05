@@ -1,5 +1,6 @@
 package launchit.formatter;
 
+import launchit.launcher.LauncherFiles;
 import launchit.formatter.versions.VersionType;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ public class Manifest {
         }
     }
 
+    private LauncherFiles launcher;
     private Map<VersionType, String> latest;
     private List<ManVersion> versions;
 
@@ -46,12 +48,15 @@ public class Manifest {
         return latest;
     }
 
-
     public ManVersion getVersion(String id) {
         return getVersions()
                 .stream()
                 .filter(version -> version.getId().equals(id))
                 .findFirst()
-                .orElseGet(null);
+                .orElse(null);
+    }
+
+    public LauncherFiles getLauncher() {
+        return launcher;
     }
 }

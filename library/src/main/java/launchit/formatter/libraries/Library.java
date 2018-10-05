@@ -1,6 +1,7 @@
 package launchit.formatter.libraries;
 
 import launchit.Launchit;
+import launchit.formatter.rules.ExtractRules;
 import launchit.utils.OperatingSystem;
 import launchit.formatter.rules.Rule;
 
@@ -13,6 +14,7 @@ public class Library {
     private String name;
     private LibraryDownloads downloads;
     private Map<OperatingSystem, String> natives;
+    private ExtractRules extract;
     private List<Rule> rules;
 
     public String getName() {
@@ -28,7 +30,7 @@ public class Library {
     }
 
     public Artifact getNative(OperatingSystem type) {
-        if (!getNatives().containsKey(type))
+        if (getNatives() == null || !getNatives().containsKey(type))
             return null;
         String name = getNatives().get(type);
         name = name.replace("${ARCH}", OperatingSystem.getArch());
@@ -48,6 +50,9 @@ public class Library {
         return last == Rule.Action.ALLOW;
     }
 
+    public ExtractRules getExtract() {
+        return extract;
+    }
 
     //******************************************************************************************************************
 
@@ -59,7 +64,10 @@ public class Library {
     }
 
     public File getLocalFile(Launchit d) {
-        return new File(Library.getLibrariesFolder(d), getEnvironmentLibrary().getPath());
+        Artifact lib = getEnvironmentLibrary();
+        if (lib == null)
+            return null;
+        return new File(Library.getLibrariesFolder(d), lib.getPath());
     }
 
     public String getRemoteSha1() {

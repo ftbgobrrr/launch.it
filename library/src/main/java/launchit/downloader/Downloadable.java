@@ -6,6 +6,7 @@ import launchit.downloader.errors.DownloadError;
 import launchit.downloader.errors.InvalidChecksumError;
 import launchit.formatter.FileType;
 import launchit.formatter.libraries.Artifact;
+import launchit.utils.FilesUtils;
 
 import java.io.*;
 import java.math.BigInteger;
@@ -66,17 +67,6 @@ public class Downloadable extends Artifact {
         return connection;
     }
 
-    private void ensureFileWritable(File target) {
-        if (target.getParentFile() != null && !target.getParentFile().isDirectory()) {
-            if (!target.getParentFile().mkdirs() && !target.getParentFile().isDirectory()) {
-                throw new RuntimeException("Could not create directory " + target.getParentFile());
-            }
-        }
-        if (target.isFile() && !target.canWrite()) {
-            throw new RuntimeException("Do not have write permissions for " + target + " - aborting!");
-        }
-    }
-
     private String copyAndDigest(InputStream inputStream, OutputStream outputStream, Launchit d, DownloadProgress progress) throws IOException {
         MessageDigest digest;
         try {
@@ -111,7 +101,7 @@ public class Downloadable extends Artifact {
             HttpURLConnection connection = this.makeConnection(new URL(this.getUrl()));
             int status = connection.getResponseCode();
             d.getFileListener().downloadFileStart(this);
-            this.ensureFileWritable(getLocalFile());
+            FilesUtils.ensureFileWritable(getLocalFile());
             if (status == 200) {
                 this.updateExpectedSize(connection);
                 InputStream inputStream = connection.getInputStream();
@@ -124,7 +114,6 @@ public class Downloadable extends Artifact {
                 InvalidChecksumError error = new InvalidChecksumError(this);
                 errors.add(error);
                 d.getFileListener().downloadFileEnd(error, this);
-                return;
             }
         } catch (IOException e) {
             ConnectionError error = new ConnectionError(this);

@@ -35,6 +35,17 @@ public class FilesUtils {
         return false;
     }
 
+    public static void ensureFileWritable(File target) {
+        if (target.getParentFile() != null && !target.getParentFile().isDirectory()) {
+            if (!target.getParentFile().mkdirs() && !target.getParentFile().isDirectory()) {
+                throw new RuntimeException("Could not create directory " + target.getParentFile());
+            }
+        }
+        if (target.isFile() && !target.canWrite()) {
+            throw new RuntimeException("Do not have write permissions for " + target + " - aborting!");
+        }
+    }
+
     public static String urlChecksum(URL url)
     {
         try {

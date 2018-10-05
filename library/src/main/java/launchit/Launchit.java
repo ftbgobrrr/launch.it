@@ -1,6 +1,7 @@
 package launchit;
 
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import launchit.auth.SessionManager;
 import launchit.downloader.DownloadProgress;
@@ -17,21 +18,23 @@ import launchit.formatter.assets.AssetIndex;
 import launchit.formatter.libraries.Artifact;
 import launchit.formatter.libraries.Library;
 import launchit.formatter.versions.Version;
+import launchit.formatter.versions.VersionFile;
 import launchit.formatter.versions.VersionType;
 import launchit.downloader.interfaces.IFileDownload;
+import launchit.game.GameManager;
+import launchit.launcher.LauncherManager;
 import launchit.utils.FilesUtils;
 import launchit.utils.UrlUtils;
-import org.apache.commons.io.Charsets;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.filefilter.*;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -39,14 +42,18 @@ public class Launchit
 {
     private final LaunchitConfig config;
     private final SessionManager sessionManager;
+    private final GameManager gameManager;
+    private final LauncherManager launcherManager;
     private ExecutorService executorService;
 
-    private IFileDownload iFileDownload;
+    private IFileDownload iFileDownload; //TODO Change listener to list of listeners
 
     protected Launchit(LaunchitConfig config) {
         this.config = config;
-        this.executorService = Executors.newFixedThreadPool(10);
-        this.sessionManager = new SessionManager(this, true);
+        this.executorService = Executors.newFixedThreadPool(5);
+        this.sessionManager = new SessionManager(this, false);
+        this.gameManager = new GameManager(this);
+        this.launcherManager = new LauncherManager(this);
     }
 
 
@@ -113,39 +120,131 @@ public class Launchit
             );
     }
 
-    public void checkForUpdate(Version version) {
-
-        Thread thread = new Thread(() -> {
+    public void checkForUpdate(String version) {
+        executorService.execute(() -> {
             try {
-                Version v = version;
-                Map<String, Asset> assetMap = v.getLocalAssetsMap(this);
+                Version local = getLocalVersion(version);
+                Version remote = null;
+                String remoteJson = null;
                 if (UrlUtils.netIsAvailable()) {
                     Manifest m = getRemoteManifest();
-                    Manifest.ManVersion mV = m.getVersion(v.getId());
+                    Manifest.ManVersion mV = m.getVersion(version);
                     if (mV == null)
                         return;
+                    remoteJson = IOUtils.toString(new URL(mV.getUrl()), StandardCharsets.UTF_8);
+                    remote = getVersion(remoteJson);
+                    if(local == null)
+                        local = remote;
+                }
+
+                File librariesFolder = Library.getLibrariesFolder(this);
+                File assetsFolder = AssetIndex.getLocalObjectsFolder(this);
+                Collection<File> lfs = librariesFolder.exists() ? FileUtils.listFiles(Library.getLibrariesFolder(this), new String[]{ "jar" }, true) : new ArrayList<>();
+                Collection<File> assets = assetsFolder.exists() ? FileUtils.listFiles(AssetIndex.getLocalObjectsFolder(this), null, true) : new ArrayList<>();
+                FileFilter fileFilter =   FileFilterUtils.and(
+                        FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("libraries", null)),
+                        FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("assets", null)),
+                        FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("versions", null))
+                );
+                List<File> files =  (List<File>)FileUtils.listFiles(getConfig().getInstallFolder() ,TrueFileFilter.INSTANCE ,(IOFileFilter)fileFilter );
+
+                Version finalRemote = remote;
+                final int filesCount = lfs.size() + assets.size() + files.size();
+                final int[] current = {0};
+                List<File> deletedFiles = new ArrayList<>();
+                Version finalLocal = local;
+                lfs.forEach(lib -> {
+                    Library remoteLib = finalRemote != null ? finalRemote.getLibrary(this, lib) : null;
+                    Library localLib = finalLocal.getLibrary(this, lib);
+                    if (remoteLib == null && localLib == null)
+                        return;
+                    if (localLib != null && finalRemote != null && remoteLib == null)
+                    {
+                        this.getFileListener().deleteFileStart(lib, current[0], filesCount);
+                        FileUtils.deleteQuietly(lib);
+                        this.getFileListener().deleteFileEnd(lib, current[0], filesCount);
+                    }
+                    current[0]++;
+                });
+
+                Map<String, Asset> remoteAssetsMap = finalRemote != null ? finalRemote.getRemoteAssetsMap() : null;
+                Map<String, Asset> localAssetMap = local.getLocalAssetsMap(this);
+
+                assets.forEach(asset -> {
+
+                    Asset remoteAsset = finalRemote != null ? finalRemote.getAsset(this, remoteAssetsMap, asset) : null;
+                    Asset localAsset = finalLocal.getAsset(this, localAssetMap, asset);
+
+                    if (remoteAsset == null && localAsset == null)
+                        return;
+                    if (localAsset != null && (finalRemote != null && remoteAsset == null))
+                    {
+                        this.getFileListener().deleteFileStart(asset, current[0], filesCount);
+                        FileUtils.deleteQuietly(asset);
+                        this.getFileListener().deleteFileEnd(asset, current[0], filesCount);
+                    }
+                    current[0]++;
+                });
+
+
+                files.forEach(file -> {
+                    VersionFile remoteFile = finalRemote != null ? finalRemote.getFile(this, file) : null;
+                    VersionFile localFile = finalLocal.getFile(this, file);
+                    if (remoteFile == null && localFile == null)
+                        return;
+                    if (localFile != null && finalRemote != null && remoteFile == null)
+                    {
+                        this.getFileListener().deleteFileStart(file, current[0], filesCount);
+                        FileUtils.deleteQuietly(file);
+                        this.getFileListener().deleteFileEnd(file, current[0], filesCount);
+                    }
+                    current[0]++;
+                });
+                this.getFileListener().deleteFinished(deletedFiles);
+
+                Version v = local;
+                Map<String, Asset> assetMap = v.getLocalAssetsMap(this);
+                if (remoteJson != null && remote != null) {
                     try {
-                        File localVersion = Version.getLocalVersionFile(this, v.getId());
-                        String versionJson = IOUtils.toString(new URL(mV.getUrl()), StandardCharsets.UTF_8);
-                        FileUtils.writeStringToFile(localVersion, versionJson, StandardCharsets.UTF_8);
-                        v = getVersion(versionJson);
-                        File localAssetIndex = AssetIndex.getLocalAssetsIndex(this, v.getAssetIndex());
-                        String assetsJson = IOUtils.toString(new URL(v.getAssetIndex().getUrl()), StandardCharsets.UTF_8);
-                        FileUtils.writeStringToFile(localAssetIndex, assetsJson, StandardCharsets.UTF_8);
-                        assetMap = v.getAssetsMap(assetsJson);
+                        File localVersionFile = Version.getLocalVersionFile(this, v.getId());
+                        String json = new GsonBuilder()
+                                            .setPrettyPrinting()
+                                            .create()
+                                            .toJson(new JsonParser().parse(remoteJson).getAsJsonObject());
+                        FileUtils.writeStringToFile(localVersionFile, json, StandardCharsets.UTF_8);
+                        v = remote;
                     } catch (IOException e) {
                         e.printStackTrace();
                         //TODO print "unable to get remote files"
                     }
                 }
 
+
+                if (remoteAssetsMap != null) {
+                    try {
+                        File localAssetsFile = AssetIndex.getLocalAssetsIndex(this, v.getAssetIndex());
+                        Map<String, Object> index = new HashMap<>();
+                        index.put("objects", remoteAssetsMap);
+                        String json = new GsonBuilder()
+                                .setPrettyPrinting()
+                                .create()
+                                .toJson(index);
+                        FileUtils.writeStringToFile(localAssetsFile, json, StandardCharsets.UTF_8);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        //TODO print "unable to get remote files"
+                    }
+                    assetMap = remoteAssetsMap;
+                }
+
                 int toCheck = (int) v.getLibraries().stream()
                                 .filter(Library::matchEnvironement)
                                 .count()
-                            + v.getLocalAssetsMap(this).size()
+                            + v.getFiles().size()
+                            + assetMap.size()
                             + 1;
 
-                final int[] current = {0};
+                current[0] = 0;
                 List<Downloadable> filesToDownload = new ArrayList<>();
                 v.getLibraries().stream()
                     .filter(Library::matchEnvironement)
@@ -155,12 +254,11 @@ public class Launchit
                         File localFile = library.getLocalFile(this);
                         if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, library.getRemoteSha1()))
                         {
-                            this.getFileListener().checkFileEnd(artifact, current[0]++, toCheck);
                             filesToDownload.add(new Downloadable(FileType.LIBRARY, artifact, localFile));
                             if (localFile.exists())
                                 FileUtils.deleteQuietly(localFile);
                         }
-
+                        this.getFileListener().checkFileEnd(artifact,  current[0]++, toCheck);
                     });
                 assetMap
                     .forEach((key, asset) -> {
@@ -169,12 +267,26 @@ public class Launchit
                         File localFile = asset.getLocalFile(this);
                         if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, asset.getHash()))
                         {
-                            this.getFileListener().checkFileEnd(artifact, current[0]++, toCheck);
+
                             filesToDownload.add(new Downloadable(FileType.ASSET, artifact, localFile));
                             if (localFile.exists())
                                 FileUtils.deleteQuietly(localFile);
                         }
+                        this.getFileListener().checkFileEnd(artifact, current[0]++, toCheck);
                     });
+
+                v.getFiles().forEach(file -> {
+                    Artifact artifact = file.getDownloads().getArtifact();
+                    this.getFileListener().checkFileStart(artifact, current[0], toCheck);
+                    File localFile = file.getLocalFile(this);
+                    if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, artifact.getSha1()))
+                    {
+                        filesToDownload.add(new Downloadable(FileType.OTHER, artifact, localFile));
+                        if (localFile.exists())
+                            FileUtils.deleteQuietly(localFile);
+                    }
+                    this.getFileListener().checkFileEnd(artifact,  current[0]++, toCheck);
+                });
                 File localClient = Version.DownloadType.CLIENT.getLocalFile(this, v);
                 FileData clientFileData = v.getDownload(Version.DownloadType.CLIENT);
                 Artifact clientArtifact = new Artifact(
@@ -197,7 +309,6 @@ public class Launchit
                 e.printStackTrace();
             }
         });
-        thread.start();
     }
 
     public void downloadFiles(List<Downloadable> files, Version v) {
@@ -229,6 +340,14 @@ public class Launchit
 
     public ExecutorService getExecutorService() {
         return executorService;
+    }
+
+    public GameManager getGameManager() {
+        return gameManager;
+    }
+
+    public LauncherManager getLauncherManager() {
+        return launcherManager;
     }
 
     public LaunchitConfig getConfig() {

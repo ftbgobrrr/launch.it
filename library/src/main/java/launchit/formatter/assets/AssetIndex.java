@@ -39,11 +39,7 @@ public class AssetIndex extends FileData {
         return new File(AssetIndex.getLocalAssetsFolder(d), "objects");
     }
 
-    public static File getLocalIndexeFolder(Launchit d, AssetIndex index) {
-        return new File(AssetIndex.getLocalIndexesFolder(d), index.getId());
-    }
-
     public static File getLocalAssetsIndex(Launchit d, AssetIndex index) {
-        return new File(AssetIndex.getLocalIndexeFolder(d, index), String.format("%s.json", index.getId()));
+        return new File(AssetIndex.getLocalIndexesFolder(d), index.getId() + ".json");
     }
 }

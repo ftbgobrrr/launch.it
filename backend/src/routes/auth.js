@@ -39,7 +39,7 @@ router.get('/me', jwt.active(), async (req, res) => {
     res.json(user);
 });
 
-router.post('/me/pass', jwt.active(), async (req, res) => {
+router.post('/me/pass', jwt.active(), async (req, res, next) => {
     const { payload: { id } } = req.jwt;
     const { pass } = req.body;
     const hash = await upash.hash(pass);
@@ -50,9 +50,9 @@ router.post('/me/pass', jwt.active(), async (req, res) => {
         );
     if (modifiedCount < 0) return next();
     res.status(200).json({ id });
-}, ({ res }) => error(req, INVALID_RESULT));
+}, ({ res }) => error(res, INVALID_RESULT));
 
-router.get('/logout', jwt.active(), (req, res, next) => {
+router.get('/logout', jwt.active(), (req, res) => {
     res.clearCookie('auth');
     res.json({ message: 'ok' });
 });
