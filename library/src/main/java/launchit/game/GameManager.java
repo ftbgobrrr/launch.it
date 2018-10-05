@@ -14,7 +14,7 @@ import launchit.formatter.versions.Version;
 import launchit.game.game.IGameListener;
 import launchit.utils.OperatingSystem;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.text.StrSubstitutor;
+import org.apache.commons.lang3.text.StrSubstitutor;
 
 import java.awt.*;
 import java.io.*;

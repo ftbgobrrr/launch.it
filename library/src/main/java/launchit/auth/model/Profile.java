@@ -6,6 +6,7 @@ public class Profile {
 
     private @Expose String id;
     private @Expose String name;
+    private @Expose boolean isCrack = false;
 
     private @Expose String accessToken;
 
@@ -29,5 +30,21 @@ public class Profile {
 
     public Settings getSettings() {
         return settings == null ? settings = new Settings() : settings;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setCrack(boolean crack) {
+        isCrack = crack;
+    }
+
+    public boolean isCrack() {
+        return isCrack;
     }
 }

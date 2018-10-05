@@ -64,22 +64,35 @@ public class SessionManager
         }
     }
 
-    public void doLogin(String login, String password)
+    public void doLogin(String login, String password, boolean crack)
     {
         it.getExecutorService().execute(() -> {
             try {
-                AuthenticateRes res = authenticate(
-                        Agent.getMinecraftAgent(),
-                        login,
-                        password,
-                        getClientToken()
-                );
-                res.getSelectedProfile().setAccessToken(res.getAccessToken());
-                launcherProfiles.setClientToken(res.getClientToken());
-                launcherProfiles.setSelectedProfile(res.getSelectedProfile().getId());
-                launcherProfiles.getProfiles().put(res.getSelectedProfile().getId(), res.getSelectedProfile());
-                getAuthListener().loginEvent(null, res.getSelectedProfile());
-                saveProfiles();
+                if (!crack) {
+                    AuthenticateRes res = authenticate(
+                            Agent.getMinecraftAgent(),
+                            login,
+                            password,
+                            getClientToken()
+                    );
+                    res.getSelectedProfile().setAccessToken(res.getAccessToken());
+                    launcherProfiles.setClientToken(res.getClientToken());
+                    launcherProfiles.setSelectedProfile(res.getSelectedProfile().getId());
+                    launcherProfiles.getProfiles().put(res.getSelectedProfile().getId(), res.getSelectedProfile());
+                    saveProfiles();
+                    getAuthListener().loginEvent(null, res.getSelectedProfile());
+                } else {
+                    String userID = UUID.randomUUID().toString().replace("-", "");
+                    Profile profile = new Profile();
+                    profile.setId(userID); //TODO: need test
+                    profile.setName(login);
+                    profile.setCrack(true);
+                    launcherProfiles.setSelectedProfile(login);
+                    launcherProfiles.getProfiles().put(login, profile);
+                    saveProfiles();
+                    getAuthListener().loginEvent(null, profile);
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (YggdrasilError yggdrasilError) {
@@ -98,6 +111,13 @@ public class SessionManager
                     getAuthListener().refreshEvent(null, null); //TODO better errors system
                     return;
                 }
+
+                if (p.isCrack()) {
+                    getAuthListener().refreshEvent(null, p);
+                    saveProfiles();
+                    return;
+                }
+
                 RefreshRes res = refresh(p.getAccessToken(), launcherProfiles.getClientToken());
                 p.setAccessToken(res.getAccessToken());
                 getAuthListener().refreshEvent(null, p);

@@ -95,7 +95,7 @@ public class Version {
     }
 
     public List<VersionFile> getFiles() {
-        return files;
+        return files == null ? files = new ArrayList<>() : files;
     }
 
     //******************************************************************************************************************
