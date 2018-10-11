@@ -201,9 +201,6 @@ router.post('/pack/build', jwt.require('level', '>=', groupToLevel(EDITOR)), asy
         const pack = packs.find(({ id: i }) => i == id)
         const { data } = await mojang.version(pack.preset);
         const copy = clone(data);
-        console.log(data.arguments.game.length)
-        console.log(copy.arguments.game.length)
-        console.log(copy === data);
         if (pack) {
             copy.id = pack.name;
             copy.libraries = pack.libraries && pack.libraries.filter(({ name }) => {
@@ -221,7 +218,6 @@ router.post('/pack/build', jwt.require('level', '>=', groupToLevel(EDITOR)), asy
         }
         const version = `${appRoot}/public/versions/${pack.name.toLowerCase()}.json`;
         await fse.createFile(version)
-        //console.log(clone.libraries);
         await fse.writeJson(version, copy);
         await deleteEmpty(`${appRoot}/public/`);
         res.json({ id });
