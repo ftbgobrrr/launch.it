@@ -22,7 +22,6 @@ router.get('/', (req, res) => {
 router.get('/manifest', async (req, res) => {
     const folder = `${appRoot}/public/versions/`;
     try {
-        const names = await readdir(folder);
         const packs = await req.db
             .collection('packs')
             .find({})
@@ -47,7 +46,7 @@ router.get('/manifest', async (req, res) => {
         }
         res.status(200).json({
             launcher,
-            latest: { release: packs.find(({ default: def }) => def).id },
+            latest: { release: packs.find(({ default: def }) => def)._id },
             versions
         });
     } catch (err) {
