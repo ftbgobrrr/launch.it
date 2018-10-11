@@ -216,6 +216,8 @@ public class GameManager {
         OperatingSystem os = OperatingSystem.getCurrentPlatform();
         Collection<Library> libraries = version.getLibraries();
         for (Library library : libraries) {
+            if (!library.matchEnvironement())
+                return;
             Artifact artifact = library.getNative(os);
             if (artifact == null)
                 continue;
