@@ -10,6 +10,7 @@ import { promisify } from 'util';
 import sha1FileCallback from 'sha1-file';
 import nodepath from 'path';
 import deleteEmpty from 'delete-empty';
+import clone from 'proxy-clone';
 import { groupToLevel, EDITOR, path as nameToPath } from '../utils';
 import { error, INVALID_RESULT, INCOMPATIBLE_VERSION } from '../errors';
 
@@ -54,7 +55,7 @@ router.post('/add', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req
     const { data: version } = await mojang.version(preset, true);
     console.log(version);
     req.db.collection('packs')
-        .insertOne({ name, preset, files: [], libraries: [] })
+        .insertOne({ name, preset, files: [], libraries: [], desabled: [] })
         .then(({ insertedId }) => {
             res.status(200).json({ id: insertedId, name, preset });
         });
@@ -152,7 +153,6 @@ router.post('/pack/upload', jwt.require('level', '>=', groupToLevel(EDITOR)), as
 
 router.post('/pack/del', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res, next) => {
     const { id: pack, type, name } = req.body;
-    console.log(pack, type, name, req.body)
     const plurializedType = plurializeTypes(type);
     const { modifiedCount } = await req.db.collection('packs')
         .updateOne(
@@ -173,15 +173,12 @@ router.post('/pack/settings', jwt.require('level', '>=', groupToLevel(EDITOR)), 
             { _id: new ObjectId(pack) },
             { $set: { mainClass, args } }
         );
-    console.log(modifiedCount, pack, mainClass, args);
-    
     if (matchedCount !== 1 && modifiedCount === 0) return next();
     res.status(200).json({ id: pack, mainClass, args });
 }, ({ res }) => error(res, INVALID_RESULT));
 
 router.post('/pack/desable', jwt.require('level', '>=', groupToLevel(EDITOR)), async (req, res, next) => {
     const { id: pack, type, name, desable } = req.body;
-    console.log(pack, type, name, req.body);
     const bulk = req.db.collection('packs').initializeOrderedBulkOp();
     bulk.find({ _id: new ObjectId(pack) }).updateOne({ $pull: { desabled: { type, name } } });
     if (desable == true)
@@ -203,27 +200,33 @@ router.post('/pack/build', jwt.require('level', '>=', groupToLevel(EDITOR)), asy
             res.status(200);
         const pack = packs.find(({ id: i }) => i == id)
         const { data } = await mojang.version(pack.preset);
-        const clone = Object.assign({}, data);
+        const copy = clone(data);
+        console.log(data.arguments.game.length)
+        console.log(copy.arguments.game.length)
+        console.log(copy === data);
         if (pack) {
-            clone.id = pack.name;
-            clone.libraries = pack.libraries && pack.libraries.filter(({ name }) => {
+            copy.id = pack.name;
+            copy.libraries = pack.libraries && pack.libraries.filter(({ name }) => {
                 return pack.desabled && !pack.desabled.find(({ name: n, type }) => n == name && type == 'library')
             }).concat(data.libraries);
 
-            clone.files = pack.files && pack.files.filter(({ name }) => {
+            copy.files = pack.files && pack.files.filter(({ name }) => {
                 return pack.desabled && !pack.desabled.find(({ name: n, type }) => n == name && type == 'file')
             }) || undefined;
 
-            clone.mainClass = pack.mainClass || clone.mainClass;
-            if (pack.args)
-                clone.arguments.game = data.arguments.game.concat(pack.args.split(' '));
+            copy.mainClass = pack.mainClass || copy.mainClass;
+            if (pack.args) {
+                copy.arguments.game = [ ...data.arguments.game, ...pack.args.split(' ') ];
+            }
         }
         const version = `${appRoot}/public/versions/${pack.name.toLowerCase()}.json`;
         await fse.createFile(version)
-        await fse.writeJson(version, clone);
+        //console.log(clone.libraries);
+        await fse.writeJson(version, copy);
         await deleteEmpty(`${appRoot}/public/`);
         res.json({ id });
     } catch (err) {
+        console.log(err)
         error(res, INCOMPATIBLE_VERSION);
     }
 }, ({ res }) => error(res, INVALID_RESULT));
