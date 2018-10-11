@@ -10,7 +10,7 @@ import { promisify } from 'util';
 import sha1FileCallback from 'sha1-file';
 import nodepath from 'path';
 import deleteEmpty from 'delete-empty';
-import clone from 'proxy-clone';
+import clone from 'clone';
 import { groupToLevel, EDITOR, path as nameToPath } from '../utils';
 import { error, INVALID_RESULT, INCOMPATIBLE_VERSION } from '../errors';
 
