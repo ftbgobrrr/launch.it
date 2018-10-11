@@ -46,7 +46,7 @@ router.get('/manifest', async (req, res) => {
         }
         res.status(200).json({
             launcher,
-            latest: { release: packs.find(({ default: def }) => def)._id },
+            latest: { release: packs.find(({ default: def }) => def).id },
             versions
         });
     } catch (err) {
