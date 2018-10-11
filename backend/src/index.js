@@ -15,7 +15,7 @@ const app = express();
 const mojang = new Mojang();
 const {
     PORT = 3000,
-    HOST = 'localhost',
+    HOST = 'localhost:3000',
     AUTH_SECRET = 'ducon',
     MONGO_URI = 'mongodb://localhost/launcher',
 } = process.env;

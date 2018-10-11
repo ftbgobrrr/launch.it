@@ -121,7 +121,7 @@ router.post('/pack/upload', jwt.require('level', '>=', groupToLevel(EDITOR)), as
         const out = nodepath.normalize(`${appRoot}/public/${plurializedType}/${path}`);
         await fse.createFile(out);
         await file.mv(out);
-        const url = `http://${HOST}:${PORT}/public/${plurializedType}/${nodepath.normalize(path).replace(/^\/|\/$/g, '')}`;
+        const url = `https://${HOST}/public/${plurializedType}/${nodepath.normalize(path).replace(/^\/|\/$/g, '')}`;
         const { size } = await fse.stat(out);
         const sha1 = await sha1File(out);
 
@@ -216,7 +216,7 @@ router.post('/pack/build', jwt.require('level', '>=', groupToLevel(EDITOR)), asy
 
             clone.mainClass = pack.mainClass || clone.mainClass;
             if (pack.args)
-                clone.arguments.game = clone.arguments.game.concat(pack.args.split(' '));
+                clone.arguments.game = data.arguments.game.concat(pack.args.split(' '));
         }
         const version = `${appRoot}/public/versions/${pack.name.toLowerCase()}.json`;
         await fse.createFile(version)

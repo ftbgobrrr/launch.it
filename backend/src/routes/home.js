@@ -36,7 +36,7 @@ router.get('/manifest', async (req, res) => {
         const versions = packs.map(({ default: def, ...v }) => {
             return {
                 ...v,
-                url: `http://${HOST}:${PORT}/public/versions/${v.id.toLowerCase()}.json`
+                url: `https://${HOST}/public/versions/${v.id.toLowerCase()}.json`
             }
         })
 
@@ -60,7 +60,7 @@ router.post('/uploadLauncher', jwt.active(), jwt.require('level', '>=', groupToL
     const out = `${appRoot}/public/launcher/${type}${arch !== 'null' ? `-${arch}`: ''}${path.extname(file.name)}`;
     await fse.createFile(out);
     await file.mv(out);
-    const url = `http://${HOST}:${PORT}/public/launcher/${type}${arch !== 'null' ? `-${arch}`: ''}${path.extname(file.name)}`;
+    const url = `https://${HOST}/public/launcher/${type}${arch !== 'null' ? `-${arch}`: ''}${path.extname(file.name)}`;
     const sha1 = await sha1File(out);
     const { ok } = await req.db
         .collection('launcher')
