@@ -19,7 +19,7 @@ import java.net.URL;
 public class LauncherManager {
 
     private final Launchit it;
-    private ILauncherHandler iLauncherHandler;
+    private ILauncherHandler iLauncherHandler; //TODO: replace by event bus
 
     public LauncherManager(Launchit it) {
         this.it = it;

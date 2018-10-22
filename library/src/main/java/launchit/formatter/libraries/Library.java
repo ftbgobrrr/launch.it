@@ -2,8 +2,8 @@ package launchit.formatter.libraries;
 
 import launchit.Launchit;
 import launchit.formatter.rules.ExtractRules;
-import launchit.utils.OperatingSystem;
 import launchit.formatter.rules.Rule;
+import launchit.utils.OperatingSystem;
 
 import java.io.File;
 import java.util.List;
@@ -33,7 +33,7 @@ public class Library {
         if (getNatives() == null || !getNatives().containsKey(type))
             return null;
         String name = getNatives().get(type);
-        name = name.replace("${ARCH}", OperatingSystem.getArch());
+        name = name.replace("${arch}", OperatingSystem.getArch());
         return getDownloads().getClassifiers().get(name);
     }
 

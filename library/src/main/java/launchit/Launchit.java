@@ -7,6 +7,7 @@ import launchit.auth.SessionManager;
 import launchit.downloader.DownloadProgress;
 import launchit.downloader.Downloadable;
 import launchit.downloader.errors.DownloadError;
+import launchit.events.DownloaderEvent;
 import launchit.formatter.FileData;
 import launchit.formatter.FileType;
 import launchit.formatter.Manifest;
@@ -20,17 +21,18 @@ import launchit.formatter.libraries.Library;
 import launchit.formatter.versions.Version;
 import launchit.formatter.versions.VersionFile;
 import launchit.formatter.versions.VersionType;
-import launchit.downloader.interfaces.IFileDownload;
 import launchit.game.GameManager;
 import launchit.launcher.LauncherManager;
 import launchit.utils.FilesUtils;
 import launchit.utils.UrlUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.filefilter.*;
+import org.apache.commons.io.filefilter.FileFilterUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.greenrobot.eventbus.EventBus;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -46,11 +48,13 @@ public class Launchit
     private final LauncherManager launcherManager;
     private ExecutorService executorService;
 
-    private IFileDownload iFileDownload; //TODO Change listener to list of listeners
+
+    private EventBus eventBus;
 
     protected Launchit(LaunchitConfig config) {
         this.config = config;
         this.executorService = Executors.newFixedThreadPool(5);
+        this.eventBus = EventBus.getDefault();
         this.sessionManager = new SessionManager(this, false);
         this.gameManager = new GameManager(this);
         this.launcherManager = new LauncherManager(this);
@@ -141,12 +145,12 @@ public class Launchit
                 File assetsFolder = AssetIndex.getLocalObjectsFolder(this);
                 Collection<File> lfs = librariesFolder.exists() ? FileUtils.listFiles(Library.getLibrariesFolder(this), new String[]{ "jar" }, true) : new ArrayList<>();
                 Collection<File> assets = assetsFolder.exists() ? FileUtils.listFiles(AssetIndex.getLocalObjectsFolder(this), null, true) : new ArrayList<>();
-                FileFilter fileFilter =   FileFilterUtils.and(
+                IOFileFilter fileFilter = FileFilterUtils.and(
                         FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("libraries", null)),
                         FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("assets", null)),
                         FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("versions", null))
                 );
-                List<File> files =  (List<File>)FileUtils.listFiles(getConfig().getInstallFolder() ,TrueFileFilter.INSTANCE ,(IOFileFilter)fileFilter );
+                List<File> files = (List<File>) FileUtils.listFiles(getConfig().getInstallFolder(), TrueFileFilter.INSTANCE, fileFilter);
 
                 Version finalRemote = remote;
                 final int filesCount = lfs.size() + assets.size() + files.size();
@@ -160,9 +164,11 @@ public class Launchit
                         return;
                     if (localLib != null && finalRemote != null && remoteLib == null)
                     {
-                        this.getFileListener().deleteFileStart(lib, current[0], filesCount);
-                        FileUtils.deleteQuietly(lib);
-                        this.getFileListener().deleteFileEnd(lib, current[0], filesCount);
+                        DownloaderEvent.Delete.Pre event = new DownloaderEvent.Delete.Pre(finalLocal, deletedFiles, lib, current[0], filesCount);
+                        this.getEventBus().post(event);
+                        if (!event.isCanceled())
+                            FileUtils.deleteQuietly(lib);
+                        this.getEventBus().post(new DownloaderEvent.Delete.Post(finalLocal, deletedFiles, lib, current[0]++, filesCount));
                     }
                     current[0]++;
                 });
@@ -177,15 +183,16 @@ public class Launchit
 
                     if (remoteAsset == null && localAsset == null)
                         return;
-                    if (localAsset != null && (finalRemote != null && remoteAsset == null))
+                    if (localAsset != null && finalRemote != null && remoteAsset == null)
                     {
-                        this.getFileListener().deleteFileStart(asset, current[0], filesCount);
-                        FileUtils.deleteQuietly(asset);
-                        this.getFileListener().deleteFileEnd(asset, current[0], filesCount);
+                        DownloaderEvent.Delete.Pre event = new DownloaderEvent.Delete.Pre(finalLocal, deletedFiles, asset, current[0], filesCount);
+                        this.getEventBus().post(event);
+                        if (!event.isCanceled())
+                            FileUtils.deleteQuietly(asset);
+                        this.getEventBus().post(new DownloaderEvent.Delete.Post(finalLocal, deletedFiles, asset, current[0]++, filesCount));
                     }
                     current[0]++;
                 });
-
 
                 files.forEach(file -> {
                     VersionFile remoteFile = finalRemote != null ? finalRemote.getFile(this, file) : null;
@@ -194,13 +201,15 @@ public class Launchit
                         return;
                     if (localFile != null && finalRemote != null && remoteFile == null)
                     {
-                        this.getFileListener().deleteFileStart(file, current[0], filesCount);
-                        FileUtils.deleteQuietly(file);
-                        this.getFileListener().deleteFileEnd(file, current[0], filesCount);
+                        DownloaderEvent.Delete.Pre event = new DownloaderEvent.Delete.Pre(finalLocal, deletedFiles, file, current[0], filesCount);
+                        this.getEventBus().post(event);
+                        if (!event.isCanceled())
+                            FileUtils.deleteQuietly(file);
+                        this.getEventBus().post(new DownloaderEvent.Delete.Post(finalLocal, deletedFiles, file, current[0]++, filesCount));
                     }
                     current[0]++;
                 });
-                this.getFileListener().deleteFinished(deletedFiles);
+                this.getEventBus().post(new DownloaderEvent.Delete.Finished(finalLocal, deletedFiles, current[0], filesCount));
 
                 Version v = local;
                 Map<String, Asset> assetMap = v.getLocalAssetsMap(this);
@@ -215,7 +224,7 @@ public class Launchit
                         v = remote;
                     } catch (IOException e) {
                         e.printStackTrace();
-                        //TODO print "unable to get remote files"
+                        //TODO print "unable to get remote version file use local instead"
                     }
                 }
 
@@ -232,12 +241,12 @@ public class Launchit
                         FileUtils.writeStringToFile(localAssetsFile, json, StandardCharsets.UTF_8);
                     } catch (IOException e) {
                         e.printStackTrace();
-                        //TODO print "unable to get remote files"
+                        //TODO print "unable to get remote assets index use local instead"
                     }
                     assetMap = remoteAssetsMap;
                 }
 
-                int toCheck = (int) v.getLibraries().stream()
+                final int toCheck = (int) v.getLibraries().stream()
                                 .filter(Library::matchEnvironement)
                                 .count()
                             + v.getFiles().size()
@@ -250,42 +259,48 @@ public class Launchit
                     .filter(Library::matchEnvironement)
                     .forEach(library -> {
                         Artifact artifact = library.getEnvironmentLibrary();
-                        this.getFileListener().checkFileStart(artifact, current[0], toCheck);
-                        File localFile = library.getLocalFile(this);
-                        if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, library.getRemoteSha1()))
-                        {
-                            filesToDownload.add(new Downloadable(FileType.LIBRARY, artifact, localFile));
-                            if (localFile.exists())
-                                FileUtils.deleteQuietly(localFile);
+                        DownloaderEvent.Check.Pre event = new DownloaderEvent.Check.Pre(finalLocal, filesToDownload, artifact, current[0], toCheck);
+                        this.getEventBus().post(event);
+                        if (!event.isCanceled()) {
+                            File localFile = library.getLocalFile(this);
+                            if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, library.getRemoteSha1())) {
+                                filesToDownload.add(new Downloadable(FileType.LIBRARY, artifact, localFile));
+                                if (localFile.exists())
+                                    FileUtils.deleteQuietly(localFile);
+                            }
                         }
-                        this.getFileListener().checkFileEnd(artifact,  current[0]++, toCheck);
+                        this.getEventBus().post(new DownloaderEvent.Check.Post(finalLocal, filesToDownload, artifact, current[0]++, toCheck));
                     });
-                assetMap
-                    .forEach((key, asset) -> {
-                        Artifact artifact = Asset.toArtifact(asset, this);
-                        this.getFileListener().checkFileStart(artifact, current[0], toCheck);
+
+                assetMap.forEach((key, asset) -> {
+                    Artifact artifact = Asset.toArtifact(asset, this);
+                    DownloaderEvent.Check.Pre event = new DownloaderEvent.Check.Pre(finalLocal, filesToDownload, artifact, current[0], toCheck);
+                    this.getEventBus().post(event);
+                    if (!event.isCanceled()) {
                         File localFile = asset.getLocalFile(this);
-                        if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, asset.getHash()))
-                        {
+                        if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, asset.getHash())) {
 
                             filesToDownload.add(new Downloadable(FileType.ASSET, artifact, localFile));
                             if (localFile.exists())
                                 FileUtils.deleteQuietly(localFile);
                         }
-                        this.getFileListener().checkFileEnd(artifact, current[0]++, toCheck);
-                    });
+                    }
+                    this.getEventBus().post(new DownloaderEvent.Check.Post(finalLocal, filesToDownload, artifact, current[0]++, toCheck));
+                });
 
                 v.getFiles().forEach(file -> {
                     Artifact artifact = file.getDownloads().getArtifact();
-                    this.getFileListener().checkFileStart(artifact, current[0], toCheck);
-                    File localFile = file.getLocalFile(this);
-                    if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, artifact.getSha1()))
-                    {
-                        filesToDownload.add(new Downloadable(FileType.OTHER, artifact, localFile));
-                        if (localFile.exists())
-                            FileUtils.deleteQuietly(localFile);
+                    DownloaderEvent.Check.Pre event = new DownloaderEvent.Check.Pre(finalLocal, filesToDownload, artifact, current[0], toCheck);
+                    this.getEventBus().post(event);
+                    if (!event.isCanceled()) {
+                        File localFile = file.getLocalFile(this);
+                        if (!localFile.exists() || !FilesUtils.verifyChecksum(localFile, artifact.getSha1())) {
+                            filesToDownload.add(new Downloadable(FileType.OTHER, artifact, localFile));
+                            if (localFile.exists())
+                                FileUtils.deleteQuietly(localFile);
+                        }
                     }
-                    this.getFileListener().checkFileEnd(artifact,  current[0]++, toCheck);
+                    this.getEventBus().post(new DownloaderEvent.Check.Post(finalLocal, filesToDownload, artifact, current[0]++, toCheck));
                 });
                 File localClient = Version.DownloadType.CLIENT.getLocalFile(this, v);
                 FileData clientFileData = v.getDownload(Version.DownloadType.CLIENT);
@@ -296,46 +311,39 @@ public class Launchit
                         clientFileData.getSha1()
                 );
 
-                this.getFileListener().checkFileStart(clientArtifact, current[0], toCheck);
-                if (!localClient.exists() || !FilesUtils.verifyChecksum(localClient, clientFileData.getSha1())) {
-                    filesToDownload.add(new Downloadable(FileType.CLIENT, clientArtifact, localClient));
-                    if (localClient.exists())
-                        FileUtils.deleteQuietly(localClient);
-                    this.getFileListener().checkFileEnd(clientArtifact, current[0]++, toCheck);
-                }
+                DownloaderEvent.Check.Pre event = new DownloaderEvent.Check.Pre(finalLocal, filesToDownload, clientArtifact, current[0], toCheck);
+                this.getEventBus().post(event);
+                if (!event.isCanceled()) {
+                    if (!localClient.exists() || !FilesUtils.verifyChecksum(localClient, clientFileData.getSha1())) {
+                        filesToDownload.add(new Downloadable(FileType.CLIENT, clientArtifact, localClient));
+                        if (localClient.exists())
+                            FileUtils.deleteQuietly(localClient);
 
-                this.getFileListener().checkFinished(filesToDownload);
+                    }
+                }
+                this.getEventBus().post(new DownloaderEvent.Check.Post(finalLocal, filesToDownload, clientArtifact, current[0]++, toCheck));
+                this.getEventBus().post(new DownloaderEvent.Check.Finished(finalLocal, filesToDownload, current[0], toCheck));
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
     }
 
-    public void downloadFiles(List<Downloadable> files, Version v) {
+    public void downloadFiles(Version v, List<Downloadable> files) {
         Thread thread = new Thread(() -> {
             List<DownloadError> errors = new ArrayList<>();
             int total = files.stream()
                     .mapToInt(FileData::getSize)
                     .sum();
             DownloadProgress progress = new DownloadProgress(0, total);
-            files.forEach(file -> {
-                file.download(this, errors, progress);
-            });
-            this.getFileListener().downloadFinished(errors);
+            files.forEach(file -> file.download(this, v, errors, progress));
+            this.getEventBus().post(new DownloaderEvent.Download.Finished(v, errors));
         });
         thread.start();
     }
 
-    public void setFileListener(IFileDownload iFileDownload) {
-        this.iFileDownload = iFileDownload;
-    }
-
     public SessionManager getSessionManager() {
         return sessionManager;
-    }
-
-    public IFileDownload getFileListener() {
-        return iFileDownload;
     }
 
     public ExecutorService getExecutorService() {
@@ -348,6 +356,10 @@ public class Launchit
 
     public LauncherManager getLauncherManager() {
         return launcherManager;
+    }
+
+    public EventBus getEventBus() {
+        return eventBus;
     }
 
     public LaunchitConfig getConfig() {
