@@ -13,6 +13,6 @@ public class Event {
     }
 
     public void setCanceled(boolean c) {
-        this.canceled = true;
+        this.canceled = c;
     }
 }

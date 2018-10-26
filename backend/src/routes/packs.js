@@ -122,7 +122,7 @@ router.post('/pack/upload', jwt.require('level', '>=', groupToLevel(EDITOR)), as
         const out = nodepath.normalize(`${appRoot}/public/${plurializedType}/${path}`);
         await fse.createFile(out);
         await file.mv(out);
-        const url = `https://${HOST}/public/${plurializedType}/${nodepath.normalize(path).replace(/^\/|\/$/g, '')}`;
+        const url = `${HOST}/public/${plurializedType}/${nodepath.normalize(path).replace(/^\/|\/$/g, '')}`;
         const { size } = await fse.stat(out);
         const sha1 = await sha1File(out);
 

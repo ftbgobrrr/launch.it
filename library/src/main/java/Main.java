@@ -1,17 +1,13 @@
 import launchit.Launchit;
 import launchit.LaunchitConfig;
-import launchit.downloader.Downloadable;
-import launchit.downloader.errors.DownloadError;
-import launchit.downloader.interfaces.DownloaderEventListener;
 import launchit.events.GameEvent;
 import launchit.formatter.versions.Version;
 import launchit.utils.FilesUtils;
 import org.greenrobot.eventbus.Subscribe;
 
 import java.io.IOException;
-import java.util.List;
 
-public class Main implements DownloaderEventListener
+public class Main
 {
     Launchit d;
     Version v;
@@ -36,20 +32,6 @@ public class Main implements DownloaderEventListener
     {
         Main main = new Main();
         main.init();
-    }
-
-
-    @Override
-    public void checkFinished(List<Downloadable> filesToDownload) {
-        System.out.println(filesToDownload.size());
-    }
-
-    @Override
-    public void downloadFinished(List<DownloadError> errors) {
-        System.out.println(errors.size());
-        if (errors.size() == 0) {
-            d.getGameManager().startGame(v);
-        }
     }
 
     @Subscribe

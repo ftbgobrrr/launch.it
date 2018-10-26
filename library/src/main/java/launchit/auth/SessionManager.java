@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import launchit.Launchit;
 import launchit.auth.error.YggdrasilError;
-import launchit.auth.events.IAuthListener;
 import launchit.auth.model.*;
 import launchit.auth.profile.LauncherProfiles;
+import launchit.events.AuthEvent;
 import launchit.utils.UrlUtils;
 import org.apache.commons.io.FileUtils;
 
@@ -24,7 +24,6 @@ public class SessionManager
 {
     private boolean debug;
     private Launchit it;
-    private IAuthListener iAuthListener; //TODO Change listener to list of listeners
     private LauncherProfiles launcherProfiles;
 
     public SessionManager(Launchit it, boolean debug) {
@@ -80,23 +79,23 @@ public class SessionManager
                     launcherProfiles.setSelectedProfile(res.getSelectedProfile().getId());
                     launcherProfiles.getProfiles().put(res.getSelectedProfile().getId(), res.getSelectedProfile());
                     saveProfiles();
-                    getAuthListener().loginEvent(null, res.getSelectedProfile());
+                    it.getEventBus().post(new AuthEvent.Login(null, res.getSelectedProfile()));
                 } else {
                     String userID = UUID.randomUUID().toString().replace("-", "");
                     Profile profile = new Profile();
-                    profile.setId(userID); //TODO: need test
+                    profile.setId(userID);
                     profile.setName(login);
                     profile.setCrack(true);
                     launcherProfiles.setSelectedProfile(login);
                     launcherProfiles.getProfiles().put(login, profile);
                     saveProfiles();
-                    getAuthListener().loginEvent(null, profile);
+                    it.getEventBus().post(new AuthEvent.Login(null, profile));
                 }
 
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (YggdrasilError yggdrasilError) {
-                getAuthListener().loginEvent(yggdrasilError, null);
+                it.getEventBus().post(new AuthEvent.Login(yggdrasilError, null));
                 yggdrasilError.printStackTrace();
             }
         });
@@ -108,24 +107,25 @@ public class SessionManager
             try {
                 Profile p = launcherProfiles.getProfiles().get(profile);
                 if (p == null) {
-                    getAuthListener().refreshEvent(null, null); //TODO better errors system
+                    it.getEventBus().post(new AuthEvent.Refresh(null, null)); //TODO better errors system
                     return;
                 }
 
                 if (p.isCrack()) {
-                    getAuthListener().refreshEvent(null, p);
+                    it.getEventBus().post(new AuthEvent.Refresh(null, p));
                     saveProfiles();
                     return;
                 }
 
                 RefreshRes res = refresh(p.getAccessToken(), launcherProfiles.getClientToken());
                 p.setAccessToken(res.getAccessToken());
-                getAuthListener().refreshEvent(null, p);
+                it.getEventBus().post(new AuthEvent.Refresh(null, p));
                 saveProfiles();
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (YggdrasilError yggdrasilError) {
-                getAuthListener().refreshEvent(yggdrasilError, null);
+                it.getEventBus().post(new AuthEvent.Refresh(yggdrasilError, null));
+                yggdrasilError.printStackTrace();
             }
         });
     }
@@ -135,12 +135,12 @@ public class SessionManager
         it.getExecutorService().execute(() -> { //TODO: Add invalidate support
             Profile p = launcherProfiles.getProfiles().get(launcherProfiles.getSelectedProfile());
             if (p == null) {
-                getAuthListener().logoutEvent(null, null);
+                it.getEventBus().post(new AuthEvent.Logout(null, null));
                 return;
             }
             launcherProfiles.setSelectedProfile(null);
             launcherProfiles.getProfiles().remove(profile);
-            getAuthListener().logoutEvent(null, p);
+            it.getEventBus().post(new AuthEvent.Logout(null, p));
             saveProfiles();
         });
     }
@@ -249,14 +249,6 @@ public class SessionManager
         byte[] b = new byte[20];
         new Random().nextBytes(b);
         return UUID.nameUUIDFromBytes(b).toString();
-    }
-
-    public void setAuthListener(IAuthListener iAuthListener) {
-        this.iAuthListener = iAuthListener;
-    }
-
-    public IAuthListener getAuthListener() {
-        return iAuthListener;
     }
 
     public LauncherProfiles getLauncherProfiles() {

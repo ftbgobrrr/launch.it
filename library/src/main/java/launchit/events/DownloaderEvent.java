@@ -22,6 +22,10 @@ public class DownloaderEvent extends Event {
         this.version = version;
     }
 
+    public Version getVersion() {
+        return version;
+    }
+
     public static class Delete extends DownloaderEvent {
 
         private final List<File> deletedFiles;
@@ -207,6 +211,14 @@ public class DownloaderEvent extends Event {
                 super(version, errors);
                 this.downloadable = downloadable;
                 this.progress = progress;
+            }
+
+            public Downloadable getDownloadable() {
+                return downloadable;
+            }
+
+            public DownloadProgress getProgress() {
+                return progress;
             }
         }
 

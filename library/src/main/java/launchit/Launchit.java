@@ -31,6 +31,7 @@ import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.EventBusBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -54,7 +55,9 @@ public class Launchit
     protected Launchit(LaunchitConfig config) {
         this.config = config;
         this.executorService = Executors.newFixedThreadPool(5);
-        this.eventBus = EventBus.getDefault();
+        this.eventBus = EventBus.builder()
+                .logNoSubscriberMessages(false)
+                .build();
         this.sessionManager = new SessionManager(this, false);
         this.gameManager = new GameManager(this);
         this.launcherManager = new LauncherManager(this);
@@ -130,7 +133,7 @@ public class Launchit
                 Version local = getLocalVersion(version);
                 Version remote = null;
                 String remoteJson = null;
-                if (UrlUtils.netIsAvailable()) {
+                if (UrlUtils.netIsAvailable(this)) {
                     Manifest m = getRemoteManifest();
                     Manifest.ManVersion mV = m.getVersion(version);
                     if (mV == null)
