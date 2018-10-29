@@ -31,22 +31,9 @@ public class GameEvent extends Event {
             return arguments;
         }
 
-        public static class Pre extends Start {
-
-            public Pre(GameInstance instance, List<String> arguments) {
-                super(instance, arguments);
-            }
-
-            @Override
-            public boolean isCancelable() {
-                return true;
-            }
-        }
-
-        public static class Post extends Start {
-            public Post(GameInstance instance, List<String> arguments) {
-                super(instance, arguments);
-            }
+        @Override
+        public boolean isCancelable() {
+            return true;
         }
     }
 

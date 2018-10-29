@@ -18,6 +18,7 @@ public class GameManager {
 
     public GameInstance startGame(Version version) {
         GameInstance instance = new GameInstance(this, version);
+        it.getLogger().info("Launching " + instance.getName());
         instances.add(instance);
         instance.start();
         return instance;

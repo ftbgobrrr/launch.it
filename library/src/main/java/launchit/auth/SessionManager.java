@@ -119,8 +119,9 @@ public class SessionManager
 
                 RefreshRes res = refresh(p.getAccessToken(), launcherProfiles.getClientToken());
                 p.setAccessToken(res.getAccessToken());
-                it.getEventBus().post(new AuthEvent.Refresh(null, p));
+                launcherProfiles.setSelectedProfile(profile);
                 saveProfiles();
+                it.getEventBus().post(new AuthEvent.Refresh(null, p));
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (YggdrasilError yggdrasilError) {

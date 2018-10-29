@@ -35,18 +35,9 @@ public class Main
     }
 
     @Subscribe
-    public void onGameEvent(GameEvent.Start.Pre event) {
+    public void onGameEvent(GameEvent.Start event) {
         System.out.println("pre");
         event.setCanceled(true);
     }
 
-    @Subscribe
-    public void onGameEvent(GameEvent.Start.Post event) {
-        System.out.println("post");
-    }
-
-    @Subscribe
-    public void onGameEvent(GameEvent.Start event) {
-        System.out.println("start");
-    }
 }

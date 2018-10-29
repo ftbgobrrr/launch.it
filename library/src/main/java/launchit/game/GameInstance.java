@@ -43,7 +43,7 @@ public class GameInstance extends Thread implements Runnable {
         arguments.addAll(jvmArguments(getVersion().getArguments().getJvmArguments()));
         arguments.add(getVersion().getMainClass());
         arguments.addAll(gameArguments(getVersion().getArguments().getGameArguments()));
-        GameEvent.Start.Pre event = new GameEvent.Start.Pre(this, arguments);
+        GameEvent.Start event = new GameEvent.Start(this, arguments);
         this.getManager().getLaunchit().getEventBus().post(event);
         if (!event.isCanceled()) {
             try {
@@ -58,10 +58,10 @@ public class GameInstance extends Thread implements Runnable {
                 e.printStackTrace();
             }
         }
-        this.manager.getLaunchit().getEventBus().post(new GameEvent.Start.Post(this, arguments));
     }
 
     private void onGameStop(int error) {
+        manager.getLaunchit().getLogger().info(getName() + " stopped with exit code " + error);
         if (error == 0) {
             this.manager.getLaunchit().getEventBus().post(new GameEvent.Stop(this, error, null));
             return;
@@ -84,6 +84,7 @@ public class GameInstance extends Thread implements Runnable {
 
         File crashReport = null;
         if (errorText != null) {
+            manager.getLaunchit().getLogger().info(getName() + " as created a crash report at " + errorText);
             crashReport = new File(errorText);
             try {
                 Desktop.getDesktop().open(crashReport.getParentFile());
@@ -98,9 +99,8 @@ public class GameInstance extends Thread implements Runnable {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             while ((line = br.readLine()) != null) {
-                this.manager.getLaunchit().getEventBus().post(new GameEvent.Log(this, line, logs));
                 logs.add(line);
-                System.out.println(line);
+                this.manager.getLaunchit().getEventBus().post(new GameEvent.Log(this, line, logs));
             }
         }
     }
@@ -139,6 +139,8 @@ public class GameInstance extends Thread implements Runnable {
             args.add("-Dfml.ignorePatchDiscrepancies=true");
             args.add("-Dminecraft.client.jar=" + Version.DownloadType.CLIENT.getLocalFile(this.getManager().getLaunchit(), version).getCanonicalPath());
 
+            if (!profile.getSettings().getArguments().isEmpty())
+                args.addAll(Arrays.asList(profile.getSettings().getArguments().split(" ")));
             int ram = OperatingSystem.getArchMinRam();
             if (profile.getSettings().getRam() != 0)
                 ram = ram < OperatingSystem.getArchMinRam() ? OperatingSystem.getArchMinRam() : profile.getSettings().getRam();
@@ -253,5 +255,9 @@ public class GameInstance extends Thread implements Runnable {
 
     public Process getProcess() {
         return process;
+    }
+
+    public List<String> getLogs() {
+        return logs;
     }
 }

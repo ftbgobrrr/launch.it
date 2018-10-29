@@ -4,6 +4,14 @@ const routes = [
         route: require('./home'),
     },
     {
+        path: '/packs',
+        route: require('./packs'),
+    },
+    {
+        path: '/news',
+        route: require('./news')
+    },
+    {
         path: '/users',
         route: require('./users'),
     },
@@ -19,6 +27,7 @@ const routes = [
         path: '/auth',
         route: require('./auth'),
     },
+    
 ];
 
 const loadRoutes = (app, routes) => {

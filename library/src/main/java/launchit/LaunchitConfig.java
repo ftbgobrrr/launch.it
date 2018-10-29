@@ -9,6 +9,7 @@ public class LaunchitConfig
     private URL manifestUrl;
     private URL assetsServer;
     private URL authServer;
+    private URL newsUrl;
     private File installFolder;
     private String launcherName;
 
@@ -17,6 +18,7 @@ public class LaunchitConfig
             authServer = new URL("https://authserver.mojang.com/");
             assetsServer = new URL("http://resources.download.minecraft.net/");
             manifestUrl = new URL("https://launchermeta.mojang.com/mc/game/version_manifest.json");
+            newsUrl = new URL("http://localhost:3000/news");
             launcherName = "LauncherManager";
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -45,6 +47,15 @@ public class LaunchitConfig
 
     public LaunchitConfig setInstallFolder(File folder) {
         this.installFolder = folder;
+        return this;
+    }
+
+    public URL getNewsUrl() {
+        return newsUrl;
+    }
+
+    public LaunchitConfig setNewsUrl(String server) throws MalformedURLException {
+        this.newsUrl = new URL(server);
         return this;
     }
 

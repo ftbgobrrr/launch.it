@@ -26,7 +26,7 @@ const actions = {
         if (method == 'POST' && (type == 'application/x-www-form-urlencoded' || type == 'multipart/form-data'))
             body = data;
         return fetch(
-                    `http://localhost:3000/${path}`,
+                    `${API_URL}${path}`,
                     { body, ...head, method }
                 ).then(async res => {
                     const json = await res.json()
@@ -38,7 +38,6 @@ const actions = {
                                 localStorage.removeItem('auth_token');
                                 Vue.notify({ group: 'main', title: 'Error !', type: 'error', text: message})
                             }
-
                             router.push({ name: 'Login' })
                         }
                         else Vue.notify({ group: 'main', title: 'Error !', type: 'error', text: message})

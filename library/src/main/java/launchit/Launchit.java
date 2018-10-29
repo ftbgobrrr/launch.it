@@ -40,6 +40,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
 public class Launchit
 {
@@ -47,13 +48,13 @@ public class Launchit
     private final SessionManager sessionManager;
     private final GameManager gameManager;
     private final LauncherManager launcherManager;
+    private final Logger logger;
     private ExecutorService executorService;
-
-
     private EventBus eventBus;
 
     protected Launchit(LaunchitConfig config) {
         this.config = config;
+        this.logger = Logger.getLogger(config.getLauncherName());
         this.executorService = Executors.newFixedThreadPool(5);
         this.eventBus = EventBus.builder()
                 .logNoSubscriberMessages(false)
@@ -130,28 +131,32 @@ public class Launchit
     public void checkForUpdate(String version) {
         executorService.execute(() -> {
             try {
+                getLogger().info("Start checking for updates on version " + version);
                 Version local = getLocalVersion(version);
                 Version remote = null;
                 String remoteJson = null;
                 if (UrlUtils.netIsAvailable(this)) {
                     Manifest m = getRemoteManifest();
                     Manifest.ManVersion mV = m.getVersion(version);
-                    if (mV == null)
+                    if (mV == null) {
+                        getLogger().severe("Unable to get manifest version of " + version);
                         return;
+                    }
                     remoteJson = IOUtils.toString(new URL(mV.getUrl()), StandardCharsets.UTF_8);
                     remote = getVersion(remoteJson);
                     if(local == null)
                         local = remote;
                 }
 
+                getLogger().info("Checking files to delete on " + version);
                 File librariesFolder = Library.getLibrariesFolder(this);
                 File assetsFolder = AssetIndex.getLocalObjectsFolder(this);
                 Collection<File> lfs = librariesFolder.exists() ? FileUtils.listFiles(Library.getLibrariesFolder(this), new String[]{ "jar" }, true) : new ArrayList<>();
                 Collection<File> assets = assetsFolder.exists() ? FileUtils.listFiles(AssetIndex.getLocalObjectsFolder(this), null, true) : new ArrayList<>();
                 IOFileFilter fileFilter = FileFilterUtils.and(
-                        FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("libraries", null)),
-                        FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("assets", null)),
-                        FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("versions", null))
+                    FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("libraries", null)),
+                    FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("assets", null)),
+                    FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("versions", null))
                 );
                 List<File> files = (List<File>) FileUtils.listFiles(getConfig().getInstallFolder(), TrueFileFilter.INSTANCE, fileFilter);
 
@@ -212,6 +217,7 @@ public class Launchit
                     }
                     current[0]++;
                 });
+                getLogger().info(deletedFiles.size() + " files deleted on on " + version);
                 this.getEventBus().post(new DownloaderEvent.Delete.Finished(finalLocal, deletedFiles, current[0], filesCount));
 
                 Version v = local;
@@ -227,7 +233,7 @@ public class Launchit
                         v = remote;
                     } catch (IOException e) {
                         e.printStackTrace();
-                        //TODO print "unable to get remote version file use local instead"
+                        getLogger().severe("unable to get remote version file use local instead");
                     }
                 }
 
@@ -244,7 +250,7 @@ public class Launchit
                         FileUtils.writeStringToFile(localAssetsFile, json, StandardCharsets.UTF_8);
                     } catch (IOException e) {
                         e.printStackTrace();
-                        //TODO print "unable to get remote assets index use local instead"
+                        getLogger().severe("unable to get remote assets index local instead");
                     }
                     assetMap = remoteAssetsMap;
                 }
@@ -325,6 +331,7 @@ public class Launchit
                     }
                 }
                 this.getEventBus().post(new DownloaderEvent.Check.Post(finalLocal, filesToDownload, clientArtifact, current[0]++, toCheck));
+                getLogger().info("There is " + filesToDownload.size() + " files to download");
                 this.getEventBus().post(new DownloaderEvent.Check.Finished(finalLocal, filesToDownload, current[0], toCheck));
             } catch (IOException e) {
                 e.printStackTrace();
@@ -367,5 +374,9 @@ public class Launchit
 
     public LaunchitConfig getConfig() {
         return config;
+    }
+
+    public Logger getLogger() {
+        return logger;
     }
 }

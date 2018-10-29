@@ -29,6 +29,13 @@ const routes = [
     component: () => import ('@/views/Packs')
   },
   {
+    path: '/news',
+    name: 'News',
+    icon: "forum",
+    dName: "News",
+    component: () => import ('@/views/News')
+  },
+  {
     path: '/packs/:id',
     name: 'Pack',
     hide: true,
