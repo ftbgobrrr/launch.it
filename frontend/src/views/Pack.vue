@@ -154,13 +154,15 @@
                         </v-card-text>
                         <v-card-actions>
                             <v-spacer></v-spacer>
-                            <v-btn @click="saveSettings" color="primary">Save</v-btn>
+                            <v-btn @click="saveSettings" color="primary">
+                                Save
+                            </v-btn>
                         </v-card-actions>
                     </v-container>
                 </v-card>
             </v-tab-item>
         </v-tabs>
-        <v-dialog v-model="dialog" max-width="500px">
+        <v-dialog persistent v-model="dialog" max-width="500px">
             <v-card>
                 <v-card-title>
                     <span class="headline">Add file</span>
@@ -202,7 +204,7 @@
                                 <v-card-actions>
                                     <v-spacer></v-spacer>
                                     <v-btn color="blue darken-1" flat @click.native="dialog = false">Cancel</v-btn>
-                                    <v-btn color="blue darken-1" @click.native="save">Add</v-btn>
+                                    <v-btn color="blue darken-1" :disabled="uploading" :loading="uploading" @click.native="save">Add</v-btn>
                                 </v-card-actions>
                             </v-flex>
                         </v-layout>
@@ -321,7 +323,7 @@ export default {
             switch (type) {
                 case 'library':
                     const { pkg, version } = this.form;
-
+                    
                     if (!name || !pkg || !version || name == '' || pkg == '' ||  version == '') {
                         return this.$notify({ group: 'main', title: 'Error', type: 'error', text: 'Empty fields'})
                     } else if (!file || file == '') {
@@ -358,7 +360,7 @@ export default {
             this.uploading = true;
             this.upload(upload)
                 .then((artifact) => {
-                    this.dialog = !artifact
+                    this.dialog = !artifact;
                     this.uploading = false;
                 });
         }
