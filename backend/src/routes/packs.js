@@ -118,7 +118,8 @@ router.post('/pack/upload', jwt.require('level', '>=', groupToLevel(EDITOR)), as
     if (!plurializedType) return next();
     try {
         const { files: { file } } = req;
-        const path = nodepath.normalize(nameToPath(name, type));
+        let fname = name.replace(/\s+/g, '-')
+        const path = nodepath.normalize(nameToPath(fname, type));
         const out = nodepath.normalize(`${appRoot}/public/${plurializedType}/${path}`);
         await fse.createFile(out);
         await file.mv(out);
@@ -127,7 +128,7 @@ router.post('/pack/upload', jwt.require('level', '>=', groupToLevel(EDITOR)), as
         const sha1 = await sha1File(out);
 
         const lib = {
-            name,
+            name: fname,
             type: 'CUSTOM',
             downloads: {
                 artifact: {
@@ -140,7 +141,7 @@ router.post('/pack/upload', jwt.require('level', '>=', groupToLevel(EDITOR)), as
         };
 
         const bulk = req.db.collection('packs').initializeOrderedBulkOp();
-        bulk.find({ _id: new ObjectId(pack) }).updateOne({ $pull: { [plurializedType]: { name } } });
+        bulk.find({ _id: new ObjectId(pack) }).updateOne({ $pull: { [plurializedType]: { name: fname } } });
         bulk.find({ _id: new ObjectId(pack) }).updateOne({ $push: { [plurializedType]: lib } });
         const { isOk } = await bulk.execute();
         if (!isOk) return next();
