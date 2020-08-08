@@ -31,7 +31,7 @@ const webpackConfig = merge(baseWebpackConfig, {
     // http://vuejs.github.io/vue-loader/en/workflow/production.html
     new webpack.DefinePlugin({
       'process.env': env,
-      API_URL: '"http://localhost:3000/"'
+      API_URL: '"https://launcher-api.auleria-rp.net/"'
     }),
     new UglifyJsPlugin({
       uglifyOptions: {
