@@ -44,9 +44,12 @@ router.get('/manifest', async (req, res) => {
             launcher: files.find(({ type }) => type == 'launcher'),
             bootloaders: files.filter(({ type }) => type == 'bootloader')
         }
+
+		const { id: latest, type } = packs.find(({ default: def }) => def) || { id: 'none' };
+
         res.status(200).json({
             launcher,
-            latest: { release: packs.find(({ default: def }) => def).id },
+            latest: { [type]: latest },
             versions
         });
     } catch (err) {
@@ -79,5 +82,41 @@ router.post('/uploadLauncher', jwt.active(), jwt.require('level', '>=', groupToL
     if (ok !== 1) return next();
     res.json({ type, arch });
 }, ({ res }) => error(res, INVALID_RESULT));
+
+//router.get('/fixHost', async (req, res) => {
+//
+//	const data = await req.db
+//		.collection('packs')
+//		.find({})
+//		.toArray();
+//	
+//	const formatted_data = data.map(async (pack) => {
+//		const id = pack._id;
+//		delete pack._id
+//		pack.files = pack.files.map((file) => {
+//			if (file === 'CUSTOM')
+//				file.downloads.artifact.url = file.downloads.artifact.url.replace(/^((http[s]?):\/)?\/?([^:\/\s]+)/gm, HOST);
+//			return file;
+//		});
+//		
+//		pack.libraries = pack.libraries.map((lib) => {
+//			if (lib.type === 'CUSTOM')
+//				lib.downloads.artifact.url = lib.downloads.artifact.url.replace(/^((http[s]?):\/)?\/?([^:\/\s]+)/gm, HOST);
+//			return lib;
+//		});
+//
+//
+//		const res = await req.db.collection('packs')
+//			.update({ _id: id }, { $set: pack })
+//		console.log(res)
+//
+//		return pack;
+//	})
+//
+//	//const { ok } = await req.db.collection('packs')
+//	//	.updateMany({}, formatted_data)
+//
+//	res.json({ formatted_data });
+//});
 
 module.exports = router;

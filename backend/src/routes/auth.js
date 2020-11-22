@@ -13,6 +13,7 @@ router.get('/', (req, res) => {
 
 router.post('/login', async (req, res, next) => {
     const { pass, login } = req.body;
+	console.log(await upash.hash(pass));
     const result = await req.db
         .collection('users')
         .find({ login })

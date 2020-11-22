@@ -6,6 +6,8 @@ const state = {
     users: []
 }
 
+console.log("API URL", process.env.API_URL);
+
 const actions = {
     send(
         { commit }, 
@@ -26,7 +28,7 @@ const actions = {
         if (method == 'POST' && (type == 'application/x-www-form-urlencoded' || type == 'multipart/form-data'))
             body = data;
         return fetch(
-                    `${API_URL}${path}`,
+                    `${process.env.API_URL}${path}`,
                     { body, ...head, method }
                 ).then(async res => {
                     const json = await res.json()

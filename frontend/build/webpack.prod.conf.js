@@ -28,11 +28,8 @@ const webpackConfig = merge(baseWebpackConfig, {
     chunkFilename: utils.assetsPath('js/[id].[chunkhash].js')
   },
   plugins: [
+	new webpack.EnvironmentPlugin(['NODE_ENV', 'DEBUG', 'API_URL']),
     // http://vuejs.github.io/vue-loader/en/workflow/production.html
-    new webpack.DefinePlugin({
-      'process.env': env,
-      API_URL: '"https://launcher-api.auleria-rp.net/"'
-    }),
     new UglifyJsPlugin({
       uglifyOptions: {
         compress: {
