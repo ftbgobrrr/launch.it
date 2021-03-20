@@ -44,6 +44,7 @@ app.use((err, req, res, next) => {
         if (err.message == 'JWT is insufficient') error(res, INSUFFICIENT_PERMISSION);
         else error(res, INVALID_TOKEN);
     } else {
+		console.log(err);
         next(err);
     }
 });
