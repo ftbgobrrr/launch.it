@@ -1,6 +1,4 @@
 out
 target
-.idea
-.settings
-.vscode
 build/
+.gradle/
