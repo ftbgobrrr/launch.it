@@ -4,8 +4,12 @@ import launchit.Launchit;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
+
+import org.apache.commons.io.IOUtils;
 
 public class UrlUtils {
 
@@ -19,12 +23,8 @@ public class UrlUtils {
 
     public static boolean netIsAvailable(String u) {
         try {
-            final URL url = new URL(u);
-            final URLConnection conn = url.openConnection();
-            conn.setReadTimeout(3);
-            conn.connect();
-            return true;
-        } catch (MalformedURLException e) {
+            return IOUtils.toString(new URI(u), StandardCharsets.UTF_8) != null;
+        } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         } catch (IOException e) {
             return false;
