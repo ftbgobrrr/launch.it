@@ -3,7 +3,6 @@ package launchit;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
-import io.sentry.Sentry;
 import launchit.auth.SessionManager;
 import launchit.downloader.DownloadProgress;
 import launchit.downloader.Downloadable;
@@ -25,7 +24,6 @@ import launchit.formatter.versions.VersionType;
 import launchit.game.GameManager;
 import launchit.launcher.LauncherManager;
 import launchit.utils.FilesUtils;
-import launchit.utils.OperatingSystem;
 import launchit.utils.UrlUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -33,7 +31,6 @@ import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.EventBusBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -64,16 +61,6 @@ public class Launchit
         this.sessionManager = new SessionManager(this, false);
         this.gameManager = new GameManager(this);
         this.launcherManager = new LauncherManager(this);
-
-        Sentry.init(options -> {
-            options.setDsn("https://beca9f15cf5c4393953bea2581163733@o543871.ingest.sentry.io/5664930");
-            options.setRelease("hennequince-launcher-v2");
-            options.setAttachThreads(true);
-        });
-
-        Sentry.configureScope(scope -> {
-            scope.setContexts("os", OperatingSystem.getCurrentPlatform().getName());
-        });
     }
 
 

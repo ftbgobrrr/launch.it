@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>library</name>
+	<name>launch.it</name>
 	<comment>Project library created by Buildship.</comment>
 	<projects>
 	</projects>
@@ -22,7 +22,7 @@
 	</natures>
 	<filteredResources>
 		<filter>
-			<id>1615068298388</id>
+			<id>0</id>
 			<name></name>
 			<type>30</type>
 			<matcher>
